@@ -2,11 +2,14 @@ package mediator
 
 import "reflect"
 
+// RequestHandlerDefinition is a marker interface for request handler definitions
+// It is used to define a request handler and its associated request type
 type RequestHandlerDefinition interface {
 	RequestType() reflect.Type
 	Handler() interface{}
 }
 
+// NewRequestHandlerDefinition creates a new request handler definition
 func NewRequestHandlerDefinition[TRequest Request[TResponse], TResponse interface{}](handler RequestHandler[TRequest, TResponse]) RequestHandlerDefinition {
 	var request TRequest
 	requestType := reflect.TypeOf(request)

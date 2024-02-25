@@ -2,11 +2,14 @@ package mediator
 
 import "reflect"
 
+// NotificationHandlerDefinition is a definition of a notification handler
+// It is used to define a notification handler and its associated notification type
 type NotificationHandlerDefinition interface {
 	NotificationType() reflect.Type
 	Handler() interface{}
 }
 
+// NewNotificationHandlerDefinition creates a new notification handler definition
 func NewNotificationHandlerDefinition[TNotification Notification](handler NotificationHandler[TNotification]) NotificationHandlerDefinition {
 	var notification Notification
 	notificationType := reflect.TypeOf(notification)

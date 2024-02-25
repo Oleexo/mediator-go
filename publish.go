@@ -5,8 +5,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Publish[TNotification Notification](ctx context.Context,
-	container Container, notification TNotification) error {
+// PublishWithoutContext publishes a notification to multiple handlers without a context
+func PublishWithoutContext[TNotification Notification](container Container, notification TNotification) error {
+	return Publish[TNotification](context.Background(), container, notification)
+}
+
+// Publish publishes a notification to multiple handlers
+func Publish[TNotification Notification](ctx context.Context, container Container, notification TNotification) error {
 	handler, exists := container.resolve(notification)
 	if !exists {
 		return nil
