@@ -2,6 +2,7 @@ package mediator
 
 import (
 	"context"
+
 	"github.com/pkg/errors"
 )
 
