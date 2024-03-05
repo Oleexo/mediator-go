@@ -11,7 +11,7 @@ type NotificationHandlerDefinition interface {
 
 // NewNotificationHandlerDefinition creates a new notification handler definition
 func NewNotificationHandlerDefinition[TNotification Notification](handler NotificationHandler[TNotification]) NotificationHandlerDefinition {
-	var notification Notification
+	var notification TNotification
 	notificationType := reflect.TypeOf(notification)
 
 	return TypedNotificationHandlerDefinition[TNotification]{

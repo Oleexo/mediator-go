@@ -7,14 +7,14 @@ import (
 )
 
 // SendWithoutContext sends a request to a single handler without a context
-func SendWithoutContext[TRequest Request[TResponse], TResponse interface{}](container Container,
+func SendWithoutContext[TRequest Request[TResponse], TResponse interface{}](container SendContainer,
 	request TRequest) (TResponse, error) {
 	return Send[TRequest, TResponse](context.Background(), container, request)
 }
 
 // Send sends a request to a single handler
 func Send[TRequest Request[TResponse], TResponse interface{}](ctx context.Context,
-	container Container,
+	container SendContainer,
 	request TRequest) (TResponse, error) {
 
 	handler, exists := container.resolve(request)

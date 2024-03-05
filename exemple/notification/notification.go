@@ -36,6 +36,7 @@ func NewMyNotificationHandler2() *MyNotificationHandler2 {
 }
 
 func main() {
+	externalContext := context.Background()
 	handler1 := NewMyNotificationHandler1()
 	handler2 := NewMyNotificationHandler2()
 	def1 := mediator.NewNotificationHandlerDefinition[MyNotification](handler1)
@@ -45,15 +46,13 @@ func main() {
 		def1,
 		def2,
 	}
-	requestDefinitions := make([]mediator.RequestHandlerDefinition, 0)
-	container := mediator.New(
-		mediator.WithRequestDefinitionHandlers(requestDefinitions),
+	container := mediator.NewNotificationContainer(
 		mediator.WithNotificationDefinitionHandlers(notificationDefinitions),
 	)
 
 	notification := MyNotification{}
 
-	err := mediator.PublishWithoutContext(container, notification)
+	err := mediator.Publish(externalContext, container, notification)
 	if err != nil {
 		// todo: handle error
 		panic(err)

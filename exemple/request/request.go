@@ -34,21 +34,20 @@ func (h *MyRequestHandler) Handle(ctx context.Context, cmd MyRequest) (MyRespons
 }
 
 func main() {
+	externalContext := context.Background()
 	handler := NewMyRequestHandler()
 	def := mediator.NewRequestHandlerDefinition[MyRequest, MyResponse](handler)
 
 	requestDefinitions := []mediator.RequestHandlerDefinition{
 		def,
 	}
-	notificationDefinitions := make([]mediator.NotificationHandlerDefinition, 0)
-	container := mediator.New(
+	container := mediator.NewSendContainer(
 		mediator.WithRequestDefinitionHandlers(requestDefinitions),
-		mediator.WithNotificationDefinitionHandlers(notificationDefinitions),
 	)
 
 	request := MyRequest{}
 
-	response, err := mediator.SendWithoutContext[MyRequest, MyResponse](container, request)
+	response, err := mediator.Send[MyRequest, MyResponse](externalContext, container, request)
 	if err != nil {
 		// todo: handle error
 		panic(err)

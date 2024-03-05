@@ -1,9 +1,9 @@
 module github.com/Oleexo/mediator-go
 
-go 1.20
+go 1.22
 
 require (
-	github.com/go-playground/validator/v10 v10.18.0
+	github.com/go-playground/validator/v10 v10.19.0
 	github.com/pkg/errors v0.9.1
 	go.uber.org/fx v1.20.1
 )
