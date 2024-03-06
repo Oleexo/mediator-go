@@ -170,3 +170,33 @@ func main() {
     }
 }
 ```
+
+### Pipeline behavior
+
+You can add pipeline behavior to the request.
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/Oleexo/mediator-go/pipelines"
+)
+
+func main() {
+	// registering 
+	container := mediator.NewSendContainer(
+	    ..., // registering request handler
+	    pipelines.WithStructValidation(),
+    )
+
+	response, err := mediator.SendWithoutContext[MyRequest, MyResponse](container, request)
+	if err != nil {
+		// todo: handle error
+		panic(err)
+	}
+
+	fmt.Printf("Response: %s", response.Result)
+}
+
+```
