@@ -46,8 +46,8 @@ func main() {
 		def1,
 		def2,
 	}
-	container := mediator.NewNotificationContainer(
-		mediator.WithNotificationDefinitionHandlers(notificationDefinitions),
+	container := mediator.NewPublishContainer(
+		mediator.WithNotificationDefinitionHandlers(notificationDefinitions...),
 	)
 
 	notification := MyNotification{}

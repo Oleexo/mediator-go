@@ -2,9 +2,9 @@ package mediator
 
 import "reflect"
 
-// NotificationContainer is the mediator container for request and notification handlers
+// PublishContainer is the mediator container for request and notification handlers
 // It is responsible for resolving handlers and pipeline behaviors
-type NotificationContainer interface {
+type PublishContainer interface {
 	resolve(request interface{}) []interface{}
 }
 
@@ -20,26 +20,26 @@ func (c notificationContainer) resolve(request interface{}) []interface{} {
 	return handlers
 }
 
-type NotificationContainerOptions struct {
+type PublishContainerOptions struct {
 	NotificationDefinitionHandlers []NotificationHandlerDefinition
 }
 
 // WithNotificationDefinitionHandler adds a notification handler to the container
-func WithNotificationDefinitionHandler(notificationHandler NotificationHandlerDefinition) func(*NotificationContainerOptions) {
-	return func(options *NotificationContainerOptions) {
+func WithNotificationDefinitionHandler(notificationHandler NotificationHandlerDefinition) func(*PublishContainerOptions) {
+	return func(options *PublishContainerOptions) {
 		options.NotificationDefinitionHandlers = append(options.NotificationDefinitionHandlers, notificationHandler)
 	}
 }
 
 // WithNotificationDefinitionHandlers adds notification handlers to the container
-func WithNotificationDefinitionHandlers(notificationHandlers []NotificationHandlerDefinition) func(*NotificationContainerOptions) {
-	return func(options *NotificationContainerOptions) {
+func WithNotificationDefinitionHandlers(notificationHandlers ...NotificationHandlerDefinition) func(*PublishContainerOptions) {
+	return func(options *PublishContainerOptions) {
 		options.NotificationDefinitionHandlers = append(options.NotificationDefinitionHandlers, notificationHandlers...)
 	}
 }
 
-func NewNotificationContainer(optFns ...func(*NotificationContainerOptions)) NotificationContainer {
-	options := &NotificationContainerOptions{}
+func NewPublishContainer(optFns ...func(*PublishContainerOptions)) PublishContainer {
+	options := &PublishContainerOptions{}
 	for _, optFn := range optFns {
 		optFn(options)
 	}

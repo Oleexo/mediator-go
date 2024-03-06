@@ -57,18 +57,18 @@ type PublishContainerParams struct {
 	NotificationHandlers []mediator.NotificationHandlerDefinition `group:"mediator_notification_handlers"`
 }
 
-func NewSend(param SendContainerParams) mediator.SendContainer {
+func NewSendContainer(param SendContainerParams) mediator.SendContainer {
 	return mediator.NewSendContainer(mediator.WithRequestDefinitionHandlers(param.RequestHandlers),
 		mediator.WithPipelineBehaviors(param.Pipelines))
 }
 
-func NewNotification(param PublishContainerParams) mediator.NotificationContainer {
-	return mediator.NewNotificationContainer(mediator.WithNotificationDefinitionHandlers(param.NotificationHandlers))
+func NewPublishContainer(param PublishContainerParams) mediator.PublishContainer {
+	return mediator.NewPublishContainer(mediator.WithNotificationDefinitionHandlers(param.NotificationHandlers...))
 }
 
 func NewModule() fx.Option {
 	return fx.Module("mediatorfx",
-		fx.Provide(NewSend),
-		fx.Provide(NewNotification),
+		fx.Provide(NewSendContainer),
+		fx.Provide(NewPublishContainer),
 	)
 }

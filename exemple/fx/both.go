@@ -49,10 +49,10 @@ type MyResponse struct {
 }
 
 type MyRequestHandler struct {
-	container mediator.NotificationContainer
+	container mediator.PublishContainer
 }
 
-func NewMyRequestHandler(container mediator.NotificationContainer) *MyRequestHandler {
+func NewMyRequestHandler(container mediator.PublishContainer) *MyRequestHandler {
 	return &MyRequestHandler{
 		container: container,
 	}

@@ -7,12 +7,12 @@ import (
 )
 
 // PublishWithoutContext publishes a notification to multiple handlers without a context
-func PublishWithoutContext[TNotification Notification](container NotificationContainer, notification TNotification) error {
+func PublishWithoutContext[TNotification Notification](container PublishContainer, notification TNotification) error {
 	return Publish[TNotification](context.Background(), container, notification)
 }
 
 // Publish publishes a notification to multiple handlers
-func Publish[TNotification Notification](ctx context.Context, container NotificationContainer, notification TNotification) error {
+func Publish[TNotification Notification](ctx context.Context, container PublishContainer, notification TNotification) error {
 	handlers := container.resolve(notification)
 	if handlers == nil {
 		return nil

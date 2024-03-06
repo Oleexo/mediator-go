@@ -47,10 +47,10 @@ type MyResponse struct {
 }
 
 type MyRequestHandler struct {
-	container mediator.NotificationContainer
+	container mediator.PublishContainer
 }
 
-func NewMyRequestHandler(container mediator.NotificationContainer) *MyRequestHandler {
+func NewMyRequestHandler(container mediator.PublishContainer) *MyRequestHandler {
 	return &MyRequestHandler{
 		container: container,
 	}
@@ -84,8 +84,8 @@ func main() {
 		def1,
 		def2,
 	}
-	notificationContainer := mediator.NewNotificationContainer(
-		mediator.WithNotificationDefinitionHandlers(notificationDefinitions),
+	notificationContainer := mediator.NewPublishContainer(
+		mediator.WithNotificationDefinitionHandlers(notificationDefinitions...),
 	)
 
 	handler := NewMyRequestHandler(notificationContainer)
