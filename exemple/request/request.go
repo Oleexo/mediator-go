@@ -42,7 +42,7 @@ func main() {
 		def,
 	}
 	container := mediator.NewSendContainer(
-		mediator.WithRequestDefinitionHandlers(requestDefinitions),
+		mediator.WithRequestDefinitionHandlers(requestDefinitions...),
 	)
 
 	request := MyRequest{}

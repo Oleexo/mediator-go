@@ -36,7 +36,7 @@ func WithRequestDefinitionHandler(requestHandler RequestHandlerDefinition) func(
 }
 
 // WithRequestDefinitionHandlers adds request handlers to the container
-func WithRequestDefinitionHandlers(requestHandlers []RequestHandlerDefinition) func(*SendContainerOptions) {
+func WithRequestDefinitionHandlers(requestHandlers ...RequestHandlerDefinition) func(*SendContainerOptions) {
 	return func(options *SendContainerOptions) {
 		options.RequestDefinitionHandlers = append(options.RequestDefinitionHandlers, requestHandlers...)
 	}

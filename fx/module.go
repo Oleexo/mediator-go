@@ -58,7 +58,7 @@ type PublishContainerParams struct {
 }
 
 func NewSendContainer(param SendContainerParams) mediator.SendContainer {
-	return mediator.NewSendContainer(mediator.WithRequestDefinitionHandlers(param.RequestHandlers),
+	return mediator.NewSendContainer(mediator.WithRequestDefinitionHandlers(param.RequestHandlers...),
 		mediator.WithPipelineBehaviors(param.Pipelines))
 }
 
