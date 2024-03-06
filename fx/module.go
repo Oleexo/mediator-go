@@ -20,12 +20,15 @@ func AsRequestHandler[TRequest mediator.Request[TResponse], TResponse interface{
 	}
 }
 
-func AsNotificationHandler[TNotification mediator.Notification](handler mediator.NotificationHandler[TNotification]) any {
-	definition := mediator.NewNotificationHandlerDefinition(handler)
-	return fx.Annotate(definition,
-		fx.As(new(mediator.NotificationHandlerDefinition)),
-		fx.ResultTags(`group:"mediator_notification_handlers"`),
-	)
+func AsNotificationHandler[TNotification mediator.Notification, TNotificationHandler mediator.NotificationHandler[TNotification]](f any) []interface{} {
+	return []interface{}{
+		f,
+		fx.Annotate(mediator.NewNotificationHandlerDefinition[TNotification],
+			fx.As(new(mediator.NotificationHandlerDefinition)),
+			fx.From(new(TNotificationHandler)),
+			fx.ResultTags(`group:"mediator_notification_handlers"`),
+		),
+	}
 }
 
 func AsPipelineBehavior(f any) interface{} {
@@ -41,16 +44,31 @@ func AddValidationPipeline(optFns ...func(options *pipelines.Options)) interface
 	})
 }
 
-type ContainerParams struct {
+type SendContainerParams struct {
 	fx.In
 
-	RequestHandlers      []mediator.RequestHandlerDefinition      `group:"mediator_request_handlers"`
-	NotificationHandlers []mediator.NotificationHandlerDefinition `group:"mediator_notification_handlers"`
-	Pipelines            []mediator.PipelineBehavior              `group:"mediator_pipelines"`
+	RequestHandlers []mediator.RequestHandlerDefinition `group:"mediator_request_handlers"`
+	Pipelines       []mediator.PipelineBehavior         `group:"mediator_pipelines"`
 }
 
-func New(param ContainerParams) mediator.Container {
-	return mediator.New(mediator.WithRequestDefinitionHandlers(param.RequestHandlers),
-		mediator.WithNotificationDefinitionHandlers(param.NotificationHandlers),
+type PublishContainerParams struct {
+	fx.In
+
+	NotificationHandlers []mediator.NotificationHandlerDefinition `group:"mediator_notification_handlers"`
+}
+
+func NewSendContainer(param SendContainerParams) mediator.SendContainer {
+	return mediator.NewSendContainer(mediator.WithRequestDefinitionHandlers(param.RequestHandlers...),
 		mediator.WithPipelineBehaviors(param.Pipelines))
+}
+
+func NewPublishContainer(param PublishContainerParams) mediator.PublishContainer {
+	return mediator.NewPublishContainer(mediator.WithNotificationDefinitionHandlers(param.NotificationHandlers...))
+}
+
+func NewModule() fx.Option {
+	return fx.Module("mediatorfx",
+		fx.Provide(NewSendContainer),
+		fx.Provide(NewPublishContainer),
+	)
 }

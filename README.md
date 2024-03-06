@@ -49,7 +49,7 @@ func NewMyRequestHandler() *MyRequestHandler {
     return &MyRequestHandler{}
 }
 
-func (h *MyRequestHandler) Handle(ctx context.Context, cmd MyRequest) (MyResponse, error) {
+func (h MyRequestHandler) Handle(_ context.Context, cmd MyRequest) (MyResponse, error) {
     // todo: your request code
 	
     return MyResponse{
@@ -82,8 +82,8 @@ func NewMyNotificationHandler() *MyNotificationHandler {
     return &MyNotificationHandler{}
 }
 
-func (*MyNotificationHandler) Handle(ctx context.Context, request MyNotification) error {
-    fmt.Printf("Handler 1\n")
+func (h MyNotificationHandler) Handle(_ context.Context, request MyNotification) error {
+    fmt.Printf("Handler 1: %s\n", request.Name)
     return nil
 }
 ```
@@ -108,9 +108,11 @@ func main() {
     notificationDefinitions := []mediator.NotificationHandlerDefinition{
         mediator.NewNotificationHandlerDefinition[MyNotification](handnotificationHandlerler1),
     }
-    container := mediator.New(
-		mediator.WithRequestDefinitionHandlers(requestDefinitions),
-		mediator.WithNotificationDefinitionHandlers(notificationDefinitions),
+    sendContainer := mediator.NewSendContainer(
+		mediator.WithRequestDefinitionHandlers(requestDefinitions...),
+	)
+	publishContainer := mediator.NewPublishContainer(
+		mediator.WithNotificationDefinitionHandlers(notificationDefinitions...),
 	)
 }
 ```
@@ -130,7 +132,7 @@ import (
 
 func main() {
     // registering 
-    container := mediator.New(...)
+    container := mediator.NewSendContainer(...)
 
     response, err := mediator.SendWithoutContext[MyRequest, MyResponse](container, request)
     if err != nil {
@@ -157,7 +159,7 @@ import (
 
 func main() {
     // registering 
-    container := mediator.New(...)
+    container := mediator.NewPublishContainer(...)
 
     notification := MyNotification{}
 
@@ -167,4 +169,34 @@ func main() {
         panic(err)
     }
 }
+```
+
+### Pipeline behavior
+
+You can add pipeline behavior to the request.
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/Oleexo/mediator-go/pipelines"
+)
+
+func main() {
+	// registering 
+	container := mediator.NewSendContainer(
+	    ..., // registering request handler
+	    pipelines.WithStructValidation(),
+    )
+
+	response, err := mediator.SendWithoutContext[MyRequest, MyResponse](container, request)
+	if err != nil {
+		// todo: handle error
+		panic(err)
+	}
+
+	fmt.Printf("Response: %s", response.Result)
+}
+
 ```

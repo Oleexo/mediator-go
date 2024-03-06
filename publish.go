@@ -7,20 +7,25 @@ import (
 )
 
 // PublishWithoutContext publishes a notification to multiple handlers without a context
-func PublishWithoutContext[TNotification Notification](container Container, notification TNotification) error {
+func PublishWithoutContext[TNotification Notification](container PublishContainer, notification TNotification) error {
 	return Publish[TNotification](context.Background(), container, notification)
 }
 
 // Publish publishes a notification to multiple handlers
-func Publish[TNotification Notification](ctx context.Context, container Container, notification TNotification) error {
-	handler, exists := container.resolve(notification)
-	if !exists {
+func Publish[TNotification Notification](ctx context.Context, container PublishContainer, notification TNotification) error {
+	handlers := container.resolve(notification)
+	if handlers == nil {
 		return nil
 	}
-	handlerValue, ok := handler.(NotificationHandler[TNotification])
-	if !ok {
-		return errors.Errorf("handler for notification %T is not a NotificationHandler",
-			notification)
+	for _, handler := range handlers {
+		handlerValue, ok := handler.(NotificationHandler[TNotification])
+		if !ok {
+			return errors.Errorf("handler for notification %T is not a NotificationHandler", notification)
+		}
+		err := handlerValue.Handle(ctx, notification)
+		if err != nil {
+			return err
+		}
 	}
-	return handlerValue.Handle(ctx, notification)
+	return nil
 }
