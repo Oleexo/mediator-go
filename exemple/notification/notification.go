@@ -35,6 +35,37 @@ func NewMyNotificationHandler2() *MyNotificationHandler2 {
 	return &MyNotificationHandler2{}
 }
 
+func notificationWithContainer(ctx context.Context, definitions []mediator.NotificationHandlerDefinition) {
+	// Create a new container with the notification definitions
+	container := mediator.NewPublishContainer(
+		mediator.WithNotificationDefinitionHandlers(definitions...),
+	)
+
+	notification := MyNotification{}
+
+	err := mediator.Publish(ctx, container, notification)
+	if err != nil {
+		// todo: handle error
+		panic(err)
+	}
+}
+
+func notificationWithPublisher(ctx context.Context, definitions []mediator.NotificationHandlerDefinition) {
+	// Create a publisher with the notification definitions
+	publisher := mediator.NewPublisher(
+		mediator.WithNotificationDefinitionHandlers(definitions...),
+	)
+
+	notification := MyNotification{}
+
+	err := publisher.Publish(ctx, notification)
+	if err != nil {
+		// todo: handle error
+		panic(err)
+	}
+
+}
+
 func main() {
 	externalContext := context.Background()
 	handler1 := NewMyNotificationHandler1()
@@ -46,15 +77,7 @@ func main() {
 		def1,
 		def2,
 	}
-	container := mediator.NewPublishContainer(
-		mediator.WithNotificationDefinitionHandlers(notificationDefinitions...),
-	)
 
-	notification := MyNotification{}
-
-	err := mediator.Publish(externalContext, container, notification)
-	if err != nil {
-		// todo: handle error
-		panic(err)
-	}
+	notificationWithContainer(externalContext, notificationDefinitions)
+	notificationWithPublisher(externalContext, notificationDefinitions)
 }
