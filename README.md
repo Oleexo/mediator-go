@@ -4,6 +4,20 @@ Inspire from [MediatR](https://github.com/jbogard/MediatR)
 
 Simple mediator implementation for Go with no dependencies.
 
+## Summary
+
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Requests](#requests)
+    - [Using `mediator.Send[]()`](#using-mediatorsend)
+    - [Using `sender.Send()`](#using-sendersend)
+    - [Pipeline behavior](#pipeline-behavior)
+  - [Notifications](#notifications)
+    - [Using `mediator.Publish[]()`](#using-mediatorpublish)
+    - [Using `publisher.Publish()`](#using-publisherpublish)
+    - [Publish strategy](#publish-strategy)
+- [Contributing](#contributing)
+
 ## Installation
 
 Use Go modules to install mediator-go in your application
@@ -341,3 +355,31 @@ func main() {
 	}
 }
 ```
+#### Publish strategy
+
+Publish strategies are the way to handle notification through the handlers.
+There are two strategies available:
+- Synchronous (Default): The handlers will be executed one by one and the process stop at the first error
+- Parallel: The handlers will be executed in parallel and the process will return the first error
+
+The strategy can be set at the creation of the `PublishContainer` or `Publisher`.
+
+```go
+package main
+
+import (
+    "github.com/Oleexo/mediator-go"
+)
+
+func main() {
+    // Create a new container with the notification definitions
+    publishContainer := mediator.NewPublishContainer(
+        mediator.WithNotificationDefinitionHandlers(definitions...),
+        mediator.WithPublishStrategy(mediator.Parallel),
+    )
+}
+```
+
+## Contributing
+
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
