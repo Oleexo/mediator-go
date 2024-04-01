@@ -35,11 +35,7 @@ func NewMyNotificationHandler2() *MyNotificationHandler2 {
 	return &MyNotificationHandler2{}
 }
 
-func notificationWithContainer(ctx context.Context, definitions []mediator.NotificationHandlerDefinition) {
-	// Create a new container with the notification definitions
-	container := mediator.NewPublishContainer(
-		mediator.WithNotificationDefinitionHandlers(definitions...),
-	)
+func notificationWithContainer(ctx context.Context, container mediator.PublishContainer) {
 
 	notification := MyNotification{}
 
@@ -50,11 +46,9 @@ func notificationWithContainer(ctx context.Context, definitions []mediator.Notif
 	}
 }
 
-func notificationWithPublisher(ctx context.Context, definitions []mediator.NotificationHandlerDefinition) {
+func notificationWithPublisher(ctx context.Context, container mediator.PublishContainer) {
 	// Create a publisher with the notification definitions
-	publisher := mediator.NewPublisher(
-		mediator.WithNotificationDefinitionHandlers(definitions...),
-	)
+	publisher := mediator.NewPublisher(container)
 
 	notification := MyNotification{}
 
@@ -77,7 +71,11 @@ func main() {
 		def1,
 		def2,
 	}
+	// Create a new container with the notification definitions
+	container := mediator.NewPublishContainer(
+		mediator.WithNotificationDefinitionHandlers(notificationDefinitions...),
+	)
 
-	notificationWithContainer(externalContext, notificationDefinitions)
-	notificationWithPublisher(externalContext, notificationDefinitions)
+	notificationWithContainer(externalContext, container)
+	notificationWithPublisher(externalContext, container)
 }

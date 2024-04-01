@@ -70,11 +70,8 @@ func NewPublishContainer(param PublisherParams) mediator.PublishContainer {
 	)
 }
 
-func NewPublisher(param PublisherParams) mediator.Publisher {
-	return mediator.NewPublisher(
-		mediator.WithNotificationDefinitionHandlers(param.NotificationHandlers...),
-		mediator.WithPublishStrategy(param.PublishStrategy),
-	)
+func NewPublisher(container mediator.PublishContainer) mediator.Publisher {
+	return mediator.NewPublisher(container)
 }
 
 // NewModule returns a new fx.Option that provides the mediator components

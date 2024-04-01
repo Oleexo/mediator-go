@@ -326,10 +326,13 @@ func main() {
 		def2,
 	}
 
-	// Create a new container with the notification definitions
-	publisher := mediator.NewPublisher(
-		mediator.WithNotificationDefinitionHandlers(definitions...),
-	)
+  // Create a new container with the notification definitions
+  publishContainer := mediator.NewPublishContainer(
+    mediator.WithNotificationDefinitionHandlers(definitions...),
+  )
+
+  // Create a new container with the notification definitions
+	publisher := mediator.NewPublisher(publishContainer)
 }
 ```
 
