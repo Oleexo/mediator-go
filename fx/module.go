@@ -74,12 +74,17 @@ func NewPublisher(container mediator.PublishContainer) mediator.Publisher {
 	return mediator.NewPublisher(container)
 }
 
+func NewSender(container mediator.SendContainer) mediator.Sender {
+	return mediator.NewSender(container)
+}
+
 // NewModule returns a new fx.Option that provides the mediator components
 // A PublishStrategy can be provided by the user, otherwise a synchronous strategy is used
 func NewModule() fx.Option {
 	return fx.Module("mediatorfx",
 		fx.Provide(
 			NewSendContainer,
+			NewSender,
 			NewPublishContainer,
 			NewPublisher,
 		),
