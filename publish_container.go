@@ -1,45 +1,63 @@
 package mediator
 
-import "reflect"
+import (
+	"context"
+	"github.com/pkg/errors"
+	"reflect"
+)
+
+// PublishWithoutContext publishes a notification to multiple handlers without a context
+func PublishWithoutContext[TNotification Notification](container PublishContainer, notification TNotification) error {
+	return Publish[TNotification](context.Background(), container, notification)
+}
+
+// Publish publishes a notification to multiple handlers
+func Publish[TNotification Notification](ctx context.Context, container PublishContainer, notification TNotification) error {
+	handlers := container.resolve(notification)
+	if handlers == nil {
+		return nil
+	}
+
+	return container.getStrategy().Execute(ctx, handlers, func(handlerCtx context.Context, handler interface{}) error {
+		handlerValue, ok := handler.(NotificationHandler[TNotification])
+		if !ok {
+			return errors.Errorf("handler for notification %T is not a NotificationHandler", notification)
+		}
+		err := handlerValue.Handle(handlerCtx, notification)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+}
 
 // PublishContainer is the mediator container for request and notification handlers
 // It is responsible for resolving handlers and pipeline behaviors
 type PublishContainer interface {
-	resolve(request interface{}) []interface{}
+	resolve(notification interface{}) []interface{}
+	getStrategy() PublishStrategy
 }
 
 type notificationContainer struct {
 	notificationHandlers map[reflect.Type][]interface{}
+	strategy             PublishStrategy
 }
 
-func (c notificationContainer) resolve(request interface{}) []interface{} {
-	handlers, ok := c.notificationHandlers[reflect.TypeOf(request)]
+func (n notificationContainer) getStrategy() PublishStrategy {
+	return n.strategy
+}
+
+func (n notificationContainer) resolve(notification interface{}) []interface{} {
+	notificationType := reflect.TypeOf(notification)
+	results, ok := n.notificationHandlers[notificationType]
 	if !ok {
 		return nil
 	}
-	return handlers
+	return results
 }
 
-type PublishContainerOptions struct {
-	NotificationDefinitionHandlers []NotificationHandlerDefinition
-}
-
-// WithNotificationDefinitionHandler adds a notification handler to the container
-func WithNotificationDefinitionHandler(notificationHandler NotificationHandlerDefinition) func(*PublishContainerOptions) {
-	return func(options *PublishContainerOptions) {
-		options.NotificationDefinitionHandlers = append(options.NotificationDefinitionHandlers, notificationHandler)
-	}
-}
-
-// WithNotificationDefinitionHandlers adds notification handlers to the container
-func WithNotificationDefinitionHandlers(notificationHandlers ...NotificationHandlerDefinition) func(*PublishContainerOptions) {
-	return func(options *PublishContainerOptions) {
-		options.NotificationDefinitionHandlers = append(options.NotificationDefinitionHandlers, notificationHandlers...)
-	}
-}
-
-func NewPublishContainer(optFns ...func(*PublishContainerOptions)) PublishContainer {
-	options := &PublishContainerOptions{}
+func NewPublishContainer(optFns ...func(*PublishOptions)) PublishContainer {
+	options := &PublishOptions{}
 	for _, optFn := range optFns {
 		optFn(options)
 	}
@@ -53,7 +71,13 @@ func NewPublishContainer(optFns ...func(*PublishContainerOptions)) PublishContai
 			notificationHandlers[notificationHandler.NotificationType()] = []interface{}{notificationHandler.Handler()}
 		}
 	}
+	strategy := options.PublishStrategy
+	if strategy == nil {
+		strategy = NewSynchronousPublishStrategy()
+	}
+
 	return &notificationContainer{
 		notificationHandlers: notificationHandlers,
+		strategy:             strategy,
 	}
 }

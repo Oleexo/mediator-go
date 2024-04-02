@@ -2,30 +2,44 @@ package mediator
 
 import (
 	"context"
-
-	"github.com/pkg/errors"
 )
 
-// PublishWithoutContext publishes a notification to multiple handlers without a context
-func PublishWithoutContext[TNotification Notification](container PublishContainer, notification TNotification) error {
-	return Publish[TNotification](context.Background(), container, notification)
+type PublishOptions struct {
+	NotificationDefinitionHandlers []NotificationHandlerDefinition
+	PublishStrategy                PublishStrategy
 }
 
-// Publish publishes a notification to multiple handlers
-func Publish[TNotification Notification](ctx context.Context, container PublishContainer, notification TNotification) error {
-	handlers := container.resolve(notification)
-	if handlers == nil {
-		return nil
+// WithNotificationDefinitionHandler adds a notification handler to the container
+func WithNotificationDefinitionHandler(notificationHandler NotificationHandlerDefinition) func(*PublishOptions) {
+	return func(options *PublishOptions) {
+		options.NotificationDefinitionHandlers = append(options.NotificationDefinitionHandlers, notificationHandler)
 	}
-	for _, handler := range handlers {
-		handlerValue, ok := handler.(NotificationHandler[TNotification])
-		if !ok {
-			return errors.Errorf("handler for notification %T is not a NotificationHandler", notification)
-		}
-		err := handlerValue.Handle(ctx, notification)
-		if err != nil {
-			return err
-		}
+}
+
+// WithNotificationDefinitionHandlers adds notification handlers to the container
+func WithNotificationDefinitionHandlers(notificationHandlers ...NotificationHandlerDefinition) func(*PublishOptions) {
+	return func(options *PublishOptions) {
+		options.NotificationDefinitionHandlers = append(options.NotificationDefinitionHandlers, notificationHandlers...)
 	}
-	return nil
+}
+
+// WithPublishStrategy sets the strategy to publish notifications
+func WithPublishStrategy(strategy PublishStrategy) func(*PublishOptions) {
+	return func(options *PublishOptions) {
+		options.PublishStrategy = strategy
+	}
+}
+
+// Publisher is the interface to publish notifications
+type Publisher interface {
+	Publish(ctx context.Context, notification interface{}) error
+}
+
+type LaunchHandler func(context.Context, interface{}) error
+
+// PublishStrategy is the strategy to publish notifications
+type PublishStrategy interface {
+	Execute(ctx context.Context,
+		handlers []interface{},
+		launcher LaunchHandler) error
 }

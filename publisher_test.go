@@ -7,34 +7,13 @@ import (
 	"testing"
 )
 
-type TestNotification struct {
-	Value string
-}
-
-type TestNotificationHandler struct {
-	Executed bool
-}
-
-func (h *TestNotificationHandler) Handle(ctx context.Context, notification TestNotification) error {
-	h.Executed = true
-	return nil
-}
-
-type TestNotificationHandler2 struct {
-	Executed bool
-}
-
-func (h *TestNotificationHandler2) Handle(ctx context.Context, notification TestNotification) error {
-	h.Executed = true
-	return nil
-}
-
-func TestPublish(t *testing.T) {
+func TestPublisher(t *testing.T) {
 	t.Run("With no handlers", func(t *testing.T) {
 		container := mediator.NewPublishContainer()
+		publisher := mediator.NewPublisher(container)
 		notif := TestNotification{Value: "test"}
 
-		err := mediator.PublishWithoutContext(container, notif)
+		err := publisher.Publish(context.Background(), notif)
 		assert.NoError(t, err)
 	})
 
@@ -43,9 +22,10 @@ func TestPublish(t *testing.T) {
 		container := mediator.NewPublishContainer(
 			mediator.WithNotificationDefinitionHandler(mediator.NewNotificationHandlerDefinition[TestNotification](handler)),
 		)
+		publisher := mediator.NewPublisher(container)
 		notif := TestNotification{Value: "test"}
 
-		err := mediator.PublishWithoutContext(container, notif)
+		err := publisher.Publish(context.Background(), notif)
 		assert.NoError(t, err)
 		assert.True(t, handler.Executed)
 	})
@@ -59,9 +39,11 @@ func TestPublish(t *testing.T) {
 				mediator.NewNotificationHandlerDefinition[TestNotification](handler2),
 			),
 		)
+		publisher := mediator.NewPublisher(container)
+
 		notif := TestNotification{Value: "test"}
 
-		err := mediator.PublishWithoutContext(container, notif)
+		err := publisher.Publish(context.Background(), notif)
 		assert.NoError(t, err)
 		assert.True(t, handler.Executed)
 		assert.True(t, handler2.Executed)
