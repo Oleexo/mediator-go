@@ -78,7 +78,8 @@ func NewPublisher(container mediator.PublishContainer) mediator.Publisher {
 // A PublishStrategy can be provided by the user, otherwise a synchronous strategy is used
 func NewModule() fx.Option {
 	return fx.Module("mediatorfx",
-		fx.Provide(NewSendContainer,
+		fx.Provide(
+			NewSendContainer,
 			NewPublishContainer,
 			NewPublisher,
 		),

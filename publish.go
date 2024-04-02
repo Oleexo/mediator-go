@@ -2,7 +2,6 @@ package mediator
 
 import (
 	"context"
-	"reflect"
 )
 
 type PublishOptions struct {
@@ -43,13 +42,4 @@ type PublishStrategy interface {
 	Execute(ctx context.Context,
 		handlers []interface{},
 		launcher LaunchHandler) error
-}
-
-func resolve(notification interface{}, handlers map[reflect.Type][]interface{}) []interface{} {
-	notificationType := reflect.TypeOf(notification)
-	results, ok := handlers[notificationType]
-	if !ok {
-		return nil
-	}
-	return results
 }

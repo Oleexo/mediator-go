@@ -18,7 +18,7 @@ func NewPublisher(container PublishContainer) Publisher {
 }
 
 func (s publisher) Publish(ctx context.Context, notification interface{}) error {
-	handlers := resolve(notification, s.container.getHandlers())
+	handlers := s.container.resolve(notification)
 	if handlers == nil {
 		return nil
 	}

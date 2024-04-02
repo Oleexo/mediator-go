@@ -160,7 +160,61 @@ func main() {
 
 #### Using `sender.Send()`
 
-TODO
+This method use the reflection to send the request to the handler.
+
+```go
+package main
+
+import (
+	"github.com/Oleexo/mediator-go"
+)
+
+func main() {
+	// Create the request handler
+	requestHandler := NewMyRequestHandler()
+
+	// Create a definition of the request handler associated with the request and the response
+	requestDefinitions := []mediator.RequestHandlerDefinition{
+		mediator.NewRequestHandlerDefinition[MyRequest, MyResponse](requestHandler),
+	}
+
+	// Create the send container with all the request definitions
+	sendContainer := mediator.NewSendContainer(
+		mediator.WithRequestDefinitionHandlers(requestDefinitions...),
+	)
+	
+	sender := mediator.NewSender(sendContainer)
+}
+```
+
+The second step is to send the request to the handler.
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/Oleexo/mediator-go"
+)
+
+func main() {
+	// registering 
+    sender := mediator.NewSender(sendContainer)
+	ctx := context.Background()
+
+	r, err := sender.Send(ctx, request)
+	if err != nil {
+		// todo: handle error
+		panic(err)
+	}
+	
+	response := r.(MyResponse)
+
+	fmt.Printf("Response: %s", response.Result)
+}
+```
 
 #### Pipeline behavior
 

@@ -1,12 +1,17 @@
 package mediator
 
-import "reflect"
+import (
+	"context"
+	"reflect"
+)
 
 // SendContainer is the mediator container for request and notification handlers
 // It is responsible for resolving handlers and pipeline behaviors
 type SendContainer interface {
 	resolve(request interface{}) (interface{}, bool)
-	pipelineBehaviors() []PipelineBehavior
+	executeWithPipeline(ctx context.Context,
+		request BaseRequest,
+		requestHandlerBehavior RequestHandlerFunc) (interface{}, error)
 }
 
 type sendContainer struct {
@@ -14,13 +19,39 @@ type sendContainer struct {
 	pipelines       []PipelineBehavior
 }
 
-func (c sendContainer) pipelineBehaviors() []PipelineBehavior {
-	return c.pipelines
-}
-
 func (c sendContainer) resolve(request interface{}) (interface{}, bool) {
 	handler, ok := c.requestHandlers[reflect.TypeOf(request)]
 	return handler, ok
+}
+
+func (c sendContainer) executeWithPipeline(ctx context.Context,
+	request BaseRequest,
+	requestHandlerBehavior RequestHandlerFunc) (interface{}, error) {
+	if len(c.pipelines) > 0 {
+		var reversPipes = reversOrder(c.pipelines)
+
+		v := buildPipeline(reversPipes, requestHandlerBehavior,
+			func(next RequestHandlerFunc, pipe PipelineBehavior) RequestHandlerFunc {
+				pipeValue := pipe
+				nexValue := next
+
+				var handlerFunc RequestHandlerFunc = func() (interface{}, error) {
+					return pipeValue.Handle(ctx, request, nexValue)
+				}
+
+				return handlerFunc
+			})
+
+		response, err := v()
+
+		if err != nil {
+			return response, err
+		}
+
+		return response, nil
+	} else {
+		return requestHandlerBehavior()
+	}
 }
 
 type SendContainerOptions struct {

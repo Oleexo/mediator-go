@@ -25,7 +25,17 @@ func Send[TRequest Request[TResponse], TResponse interface{}](ctx context.Contex
 	if !ok {
 		return *new(TResponse), errors.Errorf("handler for request %T is not a Handle", request)
 	}
-	return executeWithPipeline[TRequest, TResponse](ctx, container.pipelineBehaviors(), handlerValue, request)
+	var requestHandlerBehavior RequestHandlerFunc = func() (interface{}, error) {
+		return handlerValue.Handle(ctx, request)
+	}
+	response, err := container.executeWithPipeline(ctx, request, requestHandlerBehavior)
+	if err != nil {
+		if r, ok := response.(TResponse); ok {
+			return r, err
+		}
+		return *new(TResponse), err
+	}
+	return response.(TResponse), nil
 }
 
 func executeWithPipeline[TRequest Request[TResponse], TResponse interface{}](ctx context.Context,
@@ -64,6 +74,13 @@ func executeWithPipeline[TRequest Request[TResponse], TResponse interface{}](ctx
 		return handler.Handle(ctx, request)
 	}
 }
+
+type Sender interface {
+	Send(ctx context.Context, request BaseRequest) (interface{}, error)
+}
+
+// RequestHandlerFunc is a function that handles a request
+type RequestHandlerFunc func() (interface{}, error)
 
 func buildPipeline(a []PipelineBehavior, seed RequestHandlerFunc,
 	f func(RequestHandlerFunc, PipelineBehavior) RequestHandlerFunc) RequestHandlerFunc {

@@ -13,7 +13,7 @@ func PublishWithoutContext[TNotification Notification](container PublishContaine
 
 // Publish publishes a notification to multiple handlers
 func Publish[TNotification Notification](ctx context.Context, container PublishContainer, notification TNotification) error {
-	handlers := resolve(notification, container.getHandlers())
+	handlers := container.resolve(notification)
 	if handlers == nil {
 		return nil
 	}
@@ -34,7 +34,7 @@ func Publish[TNotification Notification](ctx context.Context, container PublishC
 // PublishContainer is the mediator container for request and notification handlers
 // It is responsible for resolving handlers and pipeline behaviors
 type PublishContainer interface {
-	getHandlers() map[reflect.Type][]interface{}
+	resolve(notification interface{}) []interface{}
 	getStrategy() PublishStrategy
 }
 
@@ -43,12 +43,17 @@ type notificationContainer struct {
 	strategy             PublishStrategy
 }
 
-func (n notificationContainer) getHandlers() map[reflect.Type][]interface{} {
-	return n.notificationHandlers
-}
-
 func (n notificationContainer) getStrategy() PublishStrategy {
 	return n.strategy
+}
+
+func (n notificationContainer) resolve(notification interface{}) []interface{} {
+	notificationType := reflect.TypeOf(notification)
+	results, ok := n.notificationHandlers[notificationType]
+	if !ok {
+		return nil
+	}
+	return results
 }
 
 func NewPublishContainer(optFns ...func(*PublishOptions)) PublishContainer {
