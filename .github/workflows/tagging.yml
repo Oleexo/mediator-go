@@ -44,14 +44,14 @@ jobs:
       # Push new tag to the repository
       - name: Push tags
         run: |
-          git tag ${{ steps.version_step.outputs.SemVer }} && git push origin ${{ steps.version_step.outputs.SemVer }}
+          git tag v${{ steps.version_step.outputs.SemVer }} && git push origin v${{ steps.version_step.outputs.SemVer }}
 
       # Create a release
       - name: Create release
         uses: actions/create-release@v1
         with:
-          tag_name: ${{ steps.version_step.outputs.SemVer }}
-          release_name: Release ${{ steps.version_step.outputs.SemVer }}
+          tag_name: v${{ steps.version_step.outputs.SemVer }}
+          release_name: Release v${{ steps.version_step.outputs.SemVer }}
           body: |
             This release includes the following changes:
             ${{ github.event.before }}..${{ github.sha }}
