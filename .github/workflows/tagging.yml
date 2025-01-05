@@ -1,0 +1,61 @@
+name: Tag and Release Go Library
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '*.go'
+
+jobs:
+  tag-and-release:
+    name: Tag and Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: '0'
+
+      # Set up Go environment
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.23
+
+      # Ensure dependencies are in sync
+      - name: Install dependencies
+        run: go mod tidy
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v3.1.1
+        with:
+          versionSpec: '6.0.x'
+
+      - name: Determine Version
+        uses: gittools/actions/gitversion/execute@v3.1.1
+        id: version_step
+        with:
+          useConfigFile: true
+
+      # Push new tag to the repository
+      - name: Push tags
+        run: |
+          git tag ${{ steps.version_step.outputs.SemVer }} && git push origin ${{ steps.version_step.outputs.SemVer }}
+
+      # Create a release
+      - name: Create release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ steps.version_step.outputs.SemVer }}
+          release_name: Release ${{ steps.version_step.outputs.SemVer }}
+          body: |
+            This release includes the following changes:
+            ${{ github.event.before }}..${{ github.sha }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
