@@ -2,8 +2,7 @@ package mediator
 
 import (
 	"context"
-
-	"github.com/pkg/errors"
+	"fmt"
 )
 
 // SendWithoutContext sends a request to a single handler without a context
@@ -19,11 +18,11 @@ func Send[TRequest Request[TResponse], TResponse interface{}](ctx context.Contex
 
 	handler, exists := container.resolve(request)
 	if !exists {
-		return *new(TResponse), errors.Errorf("no handlers for request %T", request)
+		return *new(TResponse), fmt.Errorf("no handlers for request %T", request)
 	}
 	handlerValue, ok := handler.(RequestHandler[TRequest, TResponse])
 	if !ok {
-		return *new(TResponse), errors.Errorf("handler for request %T is not a Handle", request)
+		return *new(TResponse), fmt.Errorf("handler for request %T is not a Handle", request)
 	}
 	var requestHandlerBehavior RequestHandlerFunc = func() (interface{}, error) {
 		return handlerValue.Handle(ctx, request)
