@@ -13,9 +13,14 @@ Simple mediator implementation for Go with no dependencies.
         - [Step 1: Define a request and its response](#step-1-define-a-request-and-its-response)
         - [Step 2: Define a request handler](#step-2-define-a-request-handler)
         - [⚙️ Using `mediator.Send[]()`](#️-using-mediatorsend)
-        - [⚡ Using `sender.Send()`](#️-using-sendersend)
+        - [⚡ Using `sender.Send()`](#-using-sendersend)
     - [🔗 Pipeline Behavior](#-pipeline-behavior)
-4. [📢 Notifications](#-notifications)
+    - [📢 Notifications](#-notifications)
+        - [Using `mediator.Publish[]()`](#using-mediatorpublish)
+        - [Using `publisher.Publish()`](#using-publisherpublish)
+        - [Publish Strategy](#publish-strategy)
+4. [📚 Modules](#-modules)
+5. [💡 Contributing](#-contributing)
 
 ---
 
@@ -266,6 +271,195 @@ Notifications work differently—they are processed by multiple handlers and do 
 **event-driven systems** or **pub-sub designs**.
 
 ✅ **Best practice**: Keep handler logic short and idempotent for notifications.
+
+A notification have no base interface to implement.
+The notification will not be pass through the `PipelineBehavior`.
+
+The first step is to define a notification.
+
+```go
+package mypackage
+
+// MyNotification is an example of notification.
+type MyNotification struct {
+	Name string
+}
+```
+
+The second step is to define all handlers for this notification.
+
+```go
+package mypackage
+
+import (
+    "context"
+    "fmt"
+)
+
+type MyNotificationHandler1 struct {
+}
+
+func (*MyNotificationHandler1) Handle(ctx context.Context, request MyNotification) error {
+	fmt.Printf("Handler 1\n")
+	return nil
+}
+
+type MyNotificationHandler2 struct {
+}
+
+func (*MyNotificationHandler2) Handle(ctx context.Context, request MyNotification) error {
+	fmt.Printf("Handler 2\n")
+	return nil
+}
+```
+
+Like the request, there are two methods to publish the notification to handlers.
+
+- `mediator.Publish[]()` is the generic method to send the notification to handlers with the minimum of reflection.
+- `publisher.Publish()` is the method to send the notification to handlers with the reflection.
+
+#### Using `mediator.Publish[]()`
+
+This method use the minimum of reflection to send the notification to the handlers.
+
+The first step is to create the `PublishContainer` with the notification handler definition.
+
+```go
+package main
+
+import (
+	"context"
+
+	"github.com/Oleexo/mediator-go"
+)
+
+func main() {
+	externalContext := context.Background()
+	handler1 := NewMyNotificationHandler1()
+	handler2 := NewMyNotificationHandler2()
+	def1 := mediator.NewNotificationHandlerDefinition[MyNotification](handler1)
+	def2 := mediator.NewNotificationHandlerDefinition[MyNotification](handler2)
+
+	notificationDefinitions := []mediator.NotificationHandlerDefinition{
+		def1,
+		def2,
+	}
+
+	// Create a new container with the notification definitions
+	publishContainer := mediator.NewPublishContainer(
+		mediator.WithNotificationDefinitionHandlers(definitions...),
+	)
+}
+```
+
+The second step is to publish the notification with the `publishContainer`.
+
+```go
+package main
+
+import (
+	"github.com/Oleexo/mediator-go"
+)
+
+func main() {
+	// Create a new container with the notification definitions
+	publishContainer := mediator.NewPublishContainer(...)
+
+	notification := MyNotification{}
+
+	err := mediator.Publish(ctx, container, notification)
+	if err != nil {
+		// todo: handle error
+		panic(err)
+	}
+}
+```
+
+#### Using `publisher.Publish()`
+
+This method use the reflection to send the notification to the handlers.
+
+This first step is to create the `Publisher` with the notification handler definition.
+
+```go
+package main
+
+import (
+	"context"
+
+	"github.com/Oleexo/mediator-go"
+)
+
+func main() {
+	externalContext := context.Background()
+	handler1 := NewMyNotificationHandler1()
+	handler2 := NewMyNotificationHandler2()
+	def1 := mediator.NewNotificationHandlerDefinition[MyNotification](handler1)
+	def2 := mediator.NewNotificationHandlerDefinition[MyNotification](handler2)
+
+	notificationDefinitions := []mediator.NotificationHandlerDefinition{
+		def1,
+		def2,
+	}
+
+  // Create a new container with the notification definitions
+  publishContainer := mediator.NewPublishContainer(
+    mediator.WithNotificationDefinitionHandlers(definitions...),
+  )
+
+  // Create a new container with the notification definitions
+	publisher := mediator.NewPublisher(publishContainer)
+}
+```
+
+The second step is to publish the notification with the `publisher`.
+
+```go
+package main
+
+import (
+	"github.com/Oleexo/mediator-go"
+)
+
+func main() {
+	// Create a new container with the notification definitions
+	publisher := mediator.NewPublisher()...)
+
+	notification := MyNotification{}
+
+	err := publisher.Publish(ctx, notification)
+	if err != nil {
+		// todo: handle error
+		panic(err)
+	}
+}
+```
+
+
+#### Publish strategy
+
+Publish strategies are the way to handle notification through the handlers.
+There are two strategies available:
+- Synchronous (Default): The handlers will be executed one by one and the process stop at the first error
+- Parallel: The handlers will be executed in parallel and the process will return the first error
+
+The strategy can be set at the creation of the `PublishContainer` or `Publisher`.
+
+```go
+package main
+
+import (
+    "github.com/Oleexo/mediator-go"
+)
+
+func main() {
+    // Create a new container with the notification definitions
+    publishContainer := mediator.NewPublishContainer(
+        mediator.WithNotificationDefinitionHandlers(definitions...),
+        mediator.WithPublishStrategy(mediator.Parallel),
+    )
+}
+```
 
 ---
 
