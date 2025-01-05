@@ -2,7 +2,7 @@ package mediator
 
 import (
 	"context"
-	"github.com/pkg/errors"
+	"fmt"
 	"reflect"
 )
 
@@ -27,7 +27,7 @@ func (s publisher) Publish(ctx context.Context, notification interface{}) error 
 		handlerMethod := reflect.ValueOf(handler).
 			MethodByName("Handle")
 		if !handlerMethod.IsValid() {
-			return errors.Errorf("handler for notification %T is not a NotificationHandler", notification)
+			return fmt.Errorf("handler for notification %T is not a NotificationHandler", notification)
 		}
 		// Create a slice of reflect.Value with ctx and notification as arguments
 		args := []reflect.Value{reflect.ValueOf(handlerCtx), reflect.ValueOf(notification)}

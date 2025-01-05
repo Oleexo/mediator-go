@@ -2,8 +2,8 @@ package mediator_test
 
 import (
 	"context"
+	"errors"
 	"github.com/Oleexo/mediator-go"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

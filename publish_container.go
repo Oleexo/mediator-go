@@ -2,7 +2,7 @@ package mediator
 
 import (
 	"context"
-	"github.com/pkg/errors"
+	"fmt"
 	"reflect"
 )
 
@@ -21,7 +21,7 @@ func Publish[TNotification Notification](ctx context.Context, container PublishC
 	return container.getStrategy().Execute(ctx, handlers, func(handlerCtx context.Context, handler interface{}) error {
 		handlerValue, ok := handler.(NotificationHandler[TNotification])
 		if !ok {
-			return errors.Errorf("handler for notification %T is not a NotificationHandler", notification)
+			return fmt.Errorf("handler for notification %T is not a NotificationHandler", notification)
 		}
 		err := handlerValue.Handle(handlerCtx, notification)
 		if err != nil {
