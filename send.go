@@ -3,15 +3,17 @@ package mediator
 import (
 	"context"
 	"fmt"
+	"reflect"
 )
 
-// SendWithoutContext sends a request to a single handler without a context
+// SendWithoutContext sends a request using the provided container without requiring a context.
+// It defaults to using context.Background().
 func SendWithoutContext[TRequest Request[TResponse], TResponse interface{}](container SendContainer,
 	request TRequest) (TResponse, error) {
 	return Send[TRequest, TResponse](context.Background(), container, request)
 }
 
-// Send sends a request to a single handler
+// Send sends a request to a handler via the specified SendContainer and returns the handler's response or an error.
 func Send[TRequest Request[TResponse], TResponse interface{}](ctx context.Context,
 	container SendContainer,
 	request TRequest) (TResponse, error) {
@@ -37,65 +39,59 @@ func Send[TRequest Request[TResponse], TResponse interface{}](ctx context.Contex
 	return response.(TResponse), nil
 }
 
-func executeWithPipeline[TRequest Request[TResponse], TResponse interface{}](ctx context.Context,
-	pipelineBehaviors []PipelineBehavior,
-	handler RequestHandler[TRequest, TResponse],
-	request TRequest) (TResponse, error) {
-	if len(pipelineBehaviors) > 0 {
-		var reversPipes = reversOrder(pipelineBehaviors)
+// RequestPipelineBehavior is a marker interface for pipeline behaviors
+// A pipeline behavior is a behavior that is executed as part of a pipeline
+type RequestPipelineBehavior interface {
 
-		var lastHandler RequestHandlerFunc = func() (interface{}, error) {
-			return handler.Handle(ctx, request)
-		}
-		v := buildPipeline(reversPipes, lastHandler,
-			func(next RequestHandlerFunc, pipe PipelineBehavior) RequestHandlerFunc {
-				pipeValue := pipe
-				nexValue := next
-
-				var handlerFunc RequestHandlerFunc = func() (interface{}, error) {
-					return pipeValue.Handle(ctx, request, nexValue)
-				}
-
-				return handlerFunc
-			})
-
-		response, err := v()
-
-		if err != nil {
-			if r, ok := response.(TResponse); ok {
-				return r, err
-			}
-			return *new(TResponse), err
-		}
-
-		return response.(TResponse), nil
-	} else {
-		return handler.Handle(ctx, request)
-	}
+	// Handle processes the BaseRequest within the pipeline and calls the next RequestHandlerFunc.
+	Handle(ctx context.Context, request BaseRequest, next RequestHandlerFunc) (interface{}, error)
 }
 
+// Sender defines an interface for sending requests and retrieving responses within a given context.
 type Sender interface {
+
+	// Send executes the provided `BaseRequest` within the given context and returns the response or an error.
 	Send(ctx context.Context, request BaseRequest) (interface{}, error)
 }
 
 // RequestHandlerFunc is a function that handles a request
 type RequestHandlerFunc func() (interface{}, error)
 
-func buildPipeline(a []PipelineBehavior, seed RequestHandlerFunc,
-	f func(RequestHandlerFunc, PipelineBehavior) RequestHandlerFunc) RequestHandlerFunc {
-	result := seed
-	for _, pipelineBehavior := range a {
-		result = f(result, pipelineBehavior)
-	}
-	return result
+type sender struct {
+	container SendContainer
 }
 
-func reversOrder(values []PipelineBehavior) []PipelineBehavior {
-	var reverseValues []PipelineBehavior
+// NewSender creates a new Sender instance with the provided SendContainer for request handling and execution.
+func NewSender(container SendContainer) Sender {
+	return &sender{
+		container: container,
+	}
+}
 
-	for i := len(values) - 1; i >= 0; i-- {
-		reverseValues = append(reverseValues, values[i])
+func (s sender) Send(ctx context.Context, request BaseRequest) (interface{}, error) {
+	handler, exists := s.container.resolve(request)
+	if !exists {
+		return nil, fmt.Errorf("no handlers for request %T", request)
+	}
+	var requestHandlerBehavior RequestHandlerFunc = func() (interface{}, error) {
+		handlerMethod := reflect.ValueOf(handler).
+			MethodByName("Handle")
+		if !handlerMethod.IsValid() {
+			return nil, fmt.Errorf("handler for request %T is not a RequestHandler", request)
+		}
+		// Create a slice of reflect.Value with ctx and notification as arguments
+		args := []reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(request)}
+
+		// Call the method with ctx and notification as arguments and get the returned error
+		result := handlerMethod.Call(args)
+
+		valueResult := result[0].Interface()
+		errorResult := result[1].Interface()
+		if errorResult != nil {
+			return valueResult, errorResult.(error)
+		}
+		return valueResult, nil
 	}
 
-	return reverseValues
+	return s.container.executeWithPipeline(ctx, request, requestHandlerBehavior)
 }

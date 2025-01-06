@@ -29,6 +29,34 @@ func (h *TestNotificationHandler2) Handle(ctx context.Context, notification Test
 	return nil
 }
 
+type TestNotificationPanicHandler struct {
+	Error error
+}
+
+func (h *TestNotificationPanicHandler) Handle(ctx context.Context, notification TestNotification) error {
+	panic(h.Error)
+}
+
+type UselessNotificationPipelineBehavior struct {
+	Executed bool
+	Count    int
+}
+
+func (u *UselessNotificationPipelineBehavior) Handle(ctx context.Context, notification mediator.Notification, handler any, next mediator.NotificationHandlerFunc) error {
+	u.Executed = true
+	u.Count++
+	return next(ctx, handler)
+}
+
+type UselessStrategyPipelineBehavior struct {
+	Executed bool
+}
+
+func (u *UselessStrategyPipelineBehavior) Handle(ctx context.Context, notification mediator.Notification, next mediator.StrategyHandlerFunc) error {
+	u.Executed = true
+	return next()
+}
+
 func TestPublishContainer(t *testing.T) {
 	t.Run("With no handlers", func(t *testing.T) {
 		container := mediator.NewPublishContainer()
@@ -67,4 +95,57 @@ func TestPublishContainer(t *testing.T) {
 		assert.True(t, handler2.Executed)
 	})
 
+	t.Run("With notification pipeline behavior", func(t *testing.T) {
+		handler := &TestNotificationHandler{}
+		pipeline := &UselessNotificationPipelineBehavior{}
+		container := mediator.NewPublishContainer(
+			mediator.WithNotificationDefinitionHandlers(
+				mediator.NewNotificationHandlerDefinition[TestNotification](handler),
+			),
+			mediator.WithNotificationPipelineBehavior(pipeline),
+		)
+
+		notif := TestNotification{Value: "test"}
+
+		err := mediator.PublishWithoutContext(container, notif)
+		assert.NoError(t, err)
+		assert.True(t, pipeline.Executed)
+	})
+
+	t.Run("With notification pipeline behavior and multiple handlers", func(t *testing.T) {
+		handler := &TestNotificationHandler{}
+		handler2 := &TestNotificationHandler2{}
+		pipeline := &UselessNotificationPipelineBehavior{}
+		container := mediator.NewPublishContainer(
+			mediator.WithNotificationDefinitionHandlers(
+				mediator.NewNotificationHandlerDefinition[TestNotification](handler),
+				mediator.NewNotificationHandlerDefinition[TestNotification](handler2),
+			),
+			mediator.WithNotificationPipelineBehavior(pipeline),
+		)
+
+		notif := TestNotification{Value: "test"}
+
+		err := mediator.PublishWithoutContext(container, notif)
+		assert.NoError(t, err)
+		assert.True(t, pipeline.Executed)
+		assert.Equal(t, 2, pipeline.Count)
+	})
+
+	t.Run("With strategy pipeline behavior", func(t *testing.T) {
+		handler := &TestNotificationHandler{}
+		pipeline := &UselessStrategyPipelineBehavior{}
+		container := mediator.NewPublishContainer(
+			mediator.WithNotificationDefinitionHandlers(
+				mediator.NewNotificationHandlerDefinition[TestNotification](handler),
+			),
+			mediator.WithStrategyPipelineBehavior(pipeline),
+		)
+
+		notif := TestNotification{Value: "test"}
+
+		err := mediator.PublishWithoutContext(container, notif)
+		assert.NoError(t, err)
+		assert.True(t, pipeline.Executed)
+	})
 }
