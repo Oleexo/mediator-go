@@ -61,7 +61,7 @@ func TestSend(t *testing.T) {
 		handler := TestRequestHandler{}
 		container := mediator.NewSendContainer(
 			mediator.WithRequestDefinitionHandler(mediator.NewRequestHandlerDefinition[*TestRequest, string](handler)),
-			mediator.WithPipelineBehavior(TestPipelineBehavior{
+			mediator.WithRequestPipelineBehavior(TestPipelineBehavior{
 				Order: 1,
 			}),
 		)
@@ -78,10 +78,10 @@ func TestSend(t *testing.T) {
 		handler := TestRequestHandler{}
 		container := mediator.NewSendContainer(
 			mediator.WithRequestDefinitionHandler(mediator.NewRequestHandlerDefinition[*TestRequest, string](handler)),
-			mediator.WithPipelineBehavior(TestPipelineBehavior{
+			mediator.WithRequestPipelineBehavior(TestPipelineBehavior{
 				Order: 1,
 			}),
-			mediator.WithPipelineBehavior(TestPipelineBehavior{
+			mediator.WithRequestPipelineBehavior(TestPipelineBehavior{
 				Order: 2,
 			}),
 		)

@@ -68,7 +68,7 @@ type StrategyHandlerFunc func() error
 // StrategyPipelineBehavior defines a behavior interface for handling strategies in a pipeline configuration.
 // It processes a notification alongside a contextual handler function sequence.
 type StrategyPipelineBehavior interface {
-	Handle(ctx context.Context, notification Notification, next StrategyHandlerFunc) error
+	Handle(ctx context.Context, notification Notification, handlers []any, next StrategyHandlerFunc) error
 }
 
 // PublishStrategy is the strategy to publish notifications

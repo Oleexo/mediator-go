@@ -91,7 +91,7 @@ func (n publishContainer) executeWithPipelines(ctx context.Context,
 			nexValue := next
 
 			var handlerFunc StrategyHandlerFunc = func() error {
-				return pipeValue.Handle(ctx, notification, nexValue)
+				return pipeValue.Handle(ctx, notification, handlers, nexValue)
 			}
 
 			return handlerFunc

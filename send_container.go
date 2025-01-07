@@ -72,15 +72,15 @@ func WithRequestDefinitionHandlers(requestHandlers ...RequestHandlerDefinition) 
 	}
 }
 
-// WithPipelineBehavior adds a pipeline behavior to the container
-func WithPipelineBehavior(pipelineBehavior RequestPipelineBehavior) func(*SendContainerOptions) {
+// WithRequestPipelineBehavior adds a pipeline behavior to the container
+func WithRequestPipelineBehavior(pipelineBehavior RequestPipelineBehavior) func(*SendContainerOptions) {
 	return func(options *SendContainerOptions) {
 		options.PipelineBehaviors = append(options.PipelineBehaviors, pipelineBehavior)
 	}
 }
 
-// WithPipelineBehaviors adds pipeline behaviors to the container
-func WithPipelineBehaviors(pipelineBehaviors []RequestPipelineBehavior) func(*SendContainerOptions) {
+// WithRequestPipelineBehaviors adds pipeline behaviors to the container
+func WithRequestPipelineBehaviors(pipelineBehaviors []RequestPipelineBehavior) func(*SendContainerOptions) {
 	return func(options *SendContainerOptions) {
 		options.PipelineBehaviors = append(options.PipelineBehaviors, pipelineBehaviors...)
 	}
