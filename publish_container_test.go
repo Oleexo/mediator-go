@@ -15,7 +15,7 @@ type TestNotificationHandler struct {
 	Executed bool
 }
 
-func (h *TestNotificationHandler) Handle(ctx context.Context, notification TestNotification) error {
+func (h *TestNotificationHandler) Handle(_ context.Context, _ TestNotification) error {
 	h.Executed = true
 	return nil
 }
@@ -24,7 +24,7 @@ type TestNotificationHandler2 struct {
 	Executed bool
 }
 
-func (h *TestNotificationHandler2) Handle(ctx context.Context, notification TestNotification) error {
+func (h *TestNotificationHandler2) Handle(_ context.Context, _ TestNotification) error {
 	h.Executed = true
 	return nil
 }
@@ -33,7 +33,7 @@ type TestNotificationPanicHandler struct {
 	Error error
 }
 
-func (h *TestNotificationPanicHandler) Handle(ctx context.Context, notification TestNotification) error {
+func (h *TestNotificationPanicHandler) Handle(_ context.Context, _ TestNotification) error {
 	panic(h.Error)
 }
 
@@ -42,7 +42,7 @@ type UselessNotificationPipelineBehavior struct {
 	Count    int
 }
 
-func (u *UselessNotificationPipelineBehavior) Handle(ctx context.Context, notification mediator.Notification, handler any, next mediator.NotificationHandlerFunc) error {
+func (u *UselessNotificationPipelineBehavior) Handle(ctx context.Context, _ mediator.Notification, handler any, next mediator.NotificationHandlerFunc) error {
 	u.Executed = true
 	u.Count++
 	return next(ctx, handler)
@@ -52,7 +52,7 @@ type UselessStrategyPipelineBehavior struct {
 	Executed bool
 }
 
-func (u *UselessStrategyPipelineBehavior) Handle(ctx context.Context, notification mediator.Notification, next mediator.StrategyHandlerFunc) error {
+func (u *UselessStrategyPipelineBehavior) Handle(_ context.Context, _ mediator.Notification, _ []any, next mediator.StrategyHandlerFunc) error {
 	u.Executed = true
 	return next()
 }
