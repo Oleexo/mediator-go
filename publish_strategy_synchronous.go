@@ -6,11 +6,21 @@ import "context"
 type synchronousPublishStrategy struct {
 }
 
-func (s synchronousPublishStrategy) Execute(ctx context.Context, handlers []interface{}, launcher NotificationHandlerFunc) error {
-	for _, handler := range handlers {
-		err := launcher(ctx, handler)
-		if err != nil {
-			return err
+func (s synchronousPublishStrategy) Execute(ctx context.Context,
+	notifications []Notification,
+	resolver Resolver,
+	launcher NotificationHandlerFunc) error {
+
+	for _, notification := range notifications {
+		handlers := resolver(notification)
+		if handlers == nil {
+			continue
+		}
+		for _, handler := range handlers {
+			err := launcher(ctx, notification, handler)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -21,7 +31,7 @@ func NewSynchronousPublishStrategy() PublishStrategy {
 	return synchronousPublishStrategy{}
 }
 
-// WithSynchronousPublishStrategy sets the publish strategy to a synchronous execution model for the given PublishOptions.
+// WithSynchronousPublishStrategy sets the PublishStrategy to a synchronous execution model for the given PublishOptions.
 func WithSynchronousPublishStrategy() func(*PublishOptions) {
 	return func(options *PublishOptions) {
 		options.Strategy = NewSynchronousPublishStrategy()

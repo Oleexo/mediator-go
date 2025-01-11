@@ -9,21 +9,37 @@ import (
 type parallelPublishStrategy struct {
 }
 
-func (p parallelPublishStrategy) Execute(ctx context.Context, handlers []interface{}, launcher NotificationHandlerFunc) error {
-	errChan := make(chan error, len(handlers))
+func (p parallelPublishStrategy) Execute(ctx context.Context,
+	notifications []Notification,
+	resolver Resolver,
+	launcher NotificationHandlerFunc) error {
+
+	ec := 0
+	groups := make(map[Notification][]any)
+	for _, notification := range notifications {
+		handlers := resolver(notification)
+		groups[notification] = handlers
+		ec += len(handlers)
+	}
+
+	errChan := make(chan error, ec)
 	var wg sync.WaitGroup
 
-	for _, handler := range handlers {
-		go func(handler interface{}) {
+	c := 0
+	for notification, handlers := range groups {
+		for _, handler := range handlers {
 			wg.Add(1)
-			defer wg.Done()
-			errChan <- launcher(ctx, handler)
-		}(handler)
+			go func(ctx context.Context, notification Notification, handler interface{}) {
+				defer wg.Done()
+				errChan <- launcher(ctx, notification, handler)
+			}(ctx, notification, handler)
+			c++
+		}
 	}
 
 	wg.Wait()
 
-	for i := 0; i < len(handlers); i++ {
+	for i := 0; i < c; i++ {
 		if err := <-errChan; err != nil {
 			return err
 		}
@@ -36,7 +52,7 @@ func NewParallelPublishStrategy() PublishStrategy {
 	return parallelPublishStrategy{}
 }
 
-// WithParallelPublishStrategy sets the publish strategy to handle notifications with parallel execution of handlers.
+// WithParallelPublishStrategy sets the PublishStrategy to handle notifications with parallel execution of handlers.
 func WithParallelPublishStrategy() func(*PublishOptions) {
 	return func(options *PublishOptions) {
 		options.Strategy = NewParallelPublishStrategy()

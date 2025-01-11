@@ -50,11 +50,11 @@ func WithStrategyPipelineBehavior(pipelineBehavior StrategyPipelineBehavior) fun
 
 // Publisher is the interface to publish notifications
 type Publisher interface {
-	Publish(ctx context.Context, notification interface{}) error
+	Publish(ctx context.Context, notifications ...Notification) error
 }
 
 // NotificationHandlerFunc is a function type for handling notifications with a given context and handler object.
-type NotificationHandlerFunc func(ctx context.Context, handler any) error
+type NotificationHandlerFunc func(ctx context.Context, notification Notification, handler any) error
 
 // NotificationPipelineBehavior defines a pipeline step for processing notifications before reaching their handlers.
 // The Handle method processes a notification with a potentially custom behavior and delegates to the next pipeline step.
@@ -68,13 +68,14 @@ type StrategyHandlerFunc func() error
 // StrategyPipelineBehavior defines a behavior interface for handling strategies in a pipeline configuration.
 // It processes a notification alongside a contextual handler function sequence.
 type StrategyPipelineBehavior interface {
-	Handle(ctx context.Context, notification Notification, handlers []any, next StrategyHandlerFunc) error
+	Handle(ctx context.Context, notification []Notification, next StrategyHandlerFunc) error
 }
 
 // PublishStrategy is the strategy to publish notifications
 type PublishStrategy interface {
 	Execute(ctx context.Context,
-		handlers []interface{},
+		notifications []Notification,
+		resolver Resolver,
 		launcher NotificationHandlerFunc) error
 }
 
@@ -91,8 +92,8 @@ func NewPublisher(container PublishContainer) Publisher {
 
 // Publish sends a notification to all registered handlers in the container and executes their Handle method.
 // Returns an error if resolving or executing handlers fails.
-func (s publisher) Publish(ctx context.Context, notification interface{}) error {
-	return s.container.execute(ctx, notification, func(ctx context.Context, handler any) error {
+func (s publisher) Publish(ctx context.Context, notifications ...Notification) error {
+	return s.container.execute(ctx, notifications, func(ctx context.Context, notification Notification, handler any) error {
 		handlerMethod := reflect.ValueOf(handler).
 			MethodByName("Handle")
 		if !handlerMethod.IsValid() {

@@ -41,10 +41,14 @@ func TestParallelPublishStrategy(t *testing.T) {
 			newParallelHandler(nil),
 			newParallelHandler(nil),
 		}
+		notification := TestNotification{Value: "test"}
 
 		result := strategy.Execute(context.Background(),
-			handlers,
-			func(ctx context.Context, handler interface{}) error {
+			[]mediator.Notification{notification},
+			func(notification mediator.Notification) []any {
+				return handlers
+			},
+			func(ctx context.Context, notification mediator.Notification, handler interface{}) error {
 				return handler.(parallelHandler).Execute()
 			})
 
@@ -63,16 +67,25 @@ func TestParallelPublishStrategy(t *testing.T) {
 			newParallelHandler(nil),
 		}
 
-		result := strategy.Execute(context.Background(),
-			handlers,
-			func(ctx context.Context, handler interface{}) error {
-				return handler.(parallelHandler).Execute()
+		notification := TestNotification{Value: "test"}
 
+		result := strategy.Execute(context.Background(),
+			[]mediator.Notification{notification},
+			func(notification mediator.Notification) []any {
+				return handlers
+			},
+			func(ctx context.Context, notification mediator.Notification, handler interface{}) error {
+				return handler.(parallelHandler).Execute()
 			})
 
 		assert.Error(t, result)
 		for _, handler := range handlers {
-			assert.True(t, handler.(parallelHandler).Executed())
+			pHandler, ok := handler.(parallelHandler)
+			if !ok {
+				assert.Fail(t, "handler is not a parallelHandler")
+				return
+			}
+			assert.True(t, pHandler.Executed())
 		}
 	})
 }

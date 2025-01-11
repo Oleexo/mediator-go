@@ -42,17 +42,20 @@ type UselessNotificationPipelineBehavior struct {
 	Count    int
 }
 
-func (u *UselessNotificationPipelineBehavior) Handle(ctx context.Context, _ mediator.Notification, handler any, next mediator.NotificationHandlerFunc) error {
+func (u *UselessNotificationPipelineBehavior) Handle(ctx context.Context,
+	notification mediator.Notification,
+	handler any,
+	next mediator.NotificationHandlerFunc) error {
 	u.Executed = true
 	u.Count++
-	return next(ctx, handler)
+	return next(ctx, notification, handler)
 }
 
 type UselessStrategyPipelineBehavior struct {
 	Executed bool
 }
 
-func (u *UselessStrategyPipelineBehavior) Handle(_ context.Context, _ mediator.Notification, _ []any, next mediator.StrategyHandlerFunc) error {
+func (u *UselessStrategyPipelineBehavior) Handle(_ context.Context, _ []mediator.Notification, next mediator.StrategyHandlerFunc) error {
 	u.Executed = true
 	return next()
 }

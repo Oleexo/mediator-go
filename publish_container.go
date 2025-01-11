@@ -2,6 +2,7 @@ package mediator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"slices"
@@ -14,12 +15,16 @@ func PublishWithoutContext[TNotification Notification](container PublishContaine
 
 // Publish publishes a notification to multiple handlers
 func Publish[TNotification Notification](ctx context.Context, container PublishContainer, notification TNotification) error {
-	return container.execute(ctx, notification, func(ctx context.Context, handler any) error {
+	return container.execute(ctx, []Notification{notification}, func(ctx context.Context, notification Notification, handler any) error {
 		handlerValue, ok := handler.(NotificationHandler[TNotification])
 		if !ok {
 			return fmt.Errorf("handler for notification %T is not a NotificationHandler", notification)
 		}
-		err := handlerValue.Handle(ctx, notification)
+		n, ok := notification.(TNotification)
+		if !ok {
+			return errors.New("notification is not of type TNotification")
+		}
+		err := handlerValue.Handle(ctx, n)
 		if err != nil {
 			return err
 		}
@@ -30,7 +35,7 @@ func Publish[TNotification Notification](ctx context.Context, container PublishC
 // PublishContainer is the mediator container for request and notification handlers
 // It is responsible for resolving handlers and pipeline behaviors
 type PublishContainer interface {
-	execute(ctx context.Context, notification any, seed NotificationHandlerFunc) error
+	execute(ctx context.Context, notification []Notification, seed NotificationHandlerFunc) error
 }
 
 type publishContainer struct {
@@ -49,18 +54,22 @@ func (n publishContainer) resolve(notification interface{}) []interface{} {
 	return results
 }
 
-func (n publishContainer) execute(ctx context.Context, notification any, seed NotificationHandlerFunc) error {
-	handlers := n.resolve(notification)
+type Resolver func(notification Notification) []any
+
+func (n publishContainer) execute(ctx context.Context, notifications []Notification, seed NotificationHandlerFunc) error {
+	resolver := func(notification Notification) []any {
+		return n.resolve(notification)
+	}
 	if len(n.pipelines) == 0 && len(n.strategyPipelines) == 0 {
-		return n.strategy.Execute(ctx, handlers, seed)
+		return n.strategy.Execute(ctx, notifications, resolver, seed)
 	}
 
-	return n.executeWithPipelines(ctx, notification, handlers, seed)
+	return n.executeWithPipelines(ctx, notifications, resolver, seed)
 }
 
 func (n publishContainer) executeWithPipelines(ctx context.Context,
-	notification any,
-	handlers []interface{},
+	notifications []Notification,
+	resolver Resolver,
 	seed NotificationHandlerFunc) error {
 	var f = seed
 	if len(n.pipelines) > 0 {
@@ -70,7 +79,7 @@ func (n publishContainer) executeWithPipelines(ctx context.Context,
 				pipeValue := pipe
 				nexValue := next
 
-				var handlerFunc NotificationHandlerFunc = func(ctx context.Context, handler any) error {
+				var handlerFunc NotificationHandlerFunc = func(ctx context.Context, notification Notification, handler any) error {
 					return pipeValue.Handle(ctx, notification, handler, nexValue)
 				}
 
@@ -79,19 +88,19 @@ func (n publishContainer) executeWithPipelines(ctx context.Context,
 	}
 
 	if len(n.strategyPipelines) == 0 {
-		return n.strategy.Execute(ctx, handlers, f)
+		return n.strategy.Execute(ctx, notifications, resolver, f)
 	}
 
 	s := buildPipeline[StrategyPipelineBehavior, StrategyHandlerFunc](n.strategyPipelines,
 		func() error {
-			return n.strategy.Execute(ctx, handlers, f)
+			return n.strategy.Execute(ctx, notifications, resolver, f)
 		},
 		func(next StrategyHandlerFunc, pipe StrategyPipelineBehavior) StrategyHandlerFunc {
 			pipeValue := pipe
 			nexValue := next
 
 			var handlerFunc StrategyHandlerFunc = func() error {
-				return pipeValue.Handle(ctx, notification, handlers, nexValue)
+				return pipeValue.Handle(ctx, notifications, nexValue)
 			}
 
 			return handlerFunc

@@ -10,7 +10,7 @@ import (
 type RecoverStrategyPipelineBehavior struct {
 }
 
-func (r RecoverStrategyPipelineBehavior) Handle(_ context.Context, _ Notification, _ []any, next StrategyHandlerFunc) (retError error) {
+func (r RecoverStrategyPipelineBehavior) Handle(_ context.Context, _ []Notification, next StrategyHandlerFunc) (retError error) {
 	defer func() {
 		if err := recover(); err != nil {
 			retError = err.(error)
@@ -78,7 +78,7 @@ func NewSlogNotificationPipelineBehavior() LogNotificationPipelineBehavior {
 func (l LogNotificationPipelineBehavior) Handle(ctx context.Context, notification Notification, handler any, next NotificationHandlerFunc) error {
 	startedAt := time.Now()
 
-	err := next(ctx, handler)
+	err := next(ctx, notification, handler)
 
 	if l.LogFunc != nil {
 		elapsed := time.Since(startedAt)
