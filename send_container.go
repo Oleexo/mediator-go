@@ -3,6 +3,7 @@ package mediator
 import (
 	"context"
 	"reflect"
+	"slices"
 )
 
 // SendContainer is the mediator container for request and notification handlers
@@ -16,7 +17,7 @@ type SendContainer interface {
 
 type sendContainer struct {
 	requestHandlers map[reflect.Type]interface{}
-	pipelines       []PipelineBehavior
+	pipelines       []RequestPipelineBehavior
 }
 
 func (c sendContainer) resolve(request interface{}) (interface{}, bool) {
@@ -28,10 +29,8 @@ func (c sendContainer) executeWithPipeline(ctx context.Context,
 	request BaseRequest,
 	requestHandlerBehavior RequestHandlerFunc) (interface{}, error) {
 	if len(c.pipelines) > 0 {
-		var reversPipes = reversOrder(c.pipelines)
-
-		v := buildPipeline(reversPipes, requestHandlerBehavior,
-			func(next RequestHandlerFunc, pipe PipelineBehavior) RequestHandlerFunc {
+		v := buildPipeline(c.pipelines, requestHandlerBehavior,
+			func(next RequestHandlerFunc, pipe RequestPipelineBehavior) RequestHandlerFunc {
 				pipeValue := pipe
 				nexValue := next
 
@@ -56,7 +55,7 @@ func (c sendContainer) executeWithPipeline(ctx context.Context,
 
 type SendContainerOptions struct {
 	RequestDefinitionHandlers []RequestHandlerDefinition
-	PipelineBehaviors         []PipelineBehavior
+	PipelineBehaviors         []RequestPipelineBehavior
 }
 
 // WithRequestDefinitionHandler adds a request handler to the container
@@ -73,20 +72,21 @@ func WithRequestDefinitionHandlers(requestHandlers ...RequestHandlerDefinition) 
 	}
 }
 
-// WithPipelineBehavior adds a pipeline behavior to the container
-func WithPipelineBehavior(pipelineBehavior PipelineBehavior) func(*SendContainerOptions) {
+// WithRequestPipelineBehavior adds a pipeline behavior to the container
+func WithRequestPipelineBehavior(pipelineBehavior RequestPipelineBehavior) func(*SendContainerOptions) {
 	return func(options *SendContainerOptions) {
 		options.PipelineBehaviors = append(options.PipelineBehaviors, pipelineBehavior)
 	}
 }
 
-// WithPipelineBehaviors adds pipeline behaviors to the container
-func WithPipelineBehaviors(pipelineBehaviors []PipelineBehavior) func(*SendContainerOptions) {
+// WithRequestPipelineBehaviors adds pipeline behaviors to the container
+func WithRequestPipelineBehaviors(pipelineBehaviors []RequestPipelineBehavior) func(*SendContainerOptions) {
 	return func(options *SendContainerOptions) {
 		options.PipelineBehaviors = append(options.PipelineBehaviors, pipelineBehaviors...)
 	}
 }
 
+// NewSendContainer creates and initializes a SendContainer with custom options for request handlers and pipelines.
 func NewSendContainer(optFns ...func(*SendContainerOptions)) SendContainer {
 	options := &SendContainerOptions{}
 	for _, optFn := range optFns {
@@ -97,8 +97,12 @@ func NewSendContainer(optFns ...func(*SendContainerOptions)) SendContainer {
 	for _, requestHandler := range requestDefinitionHandlers {
 		requestHandlers[requestHandler.RequestType()] = requestHandler.Handler()
 	}
+	pipelines := options.PipelineBehaviors
+	if pipelines == nil {
+		slices.Reverse(pipelines)
+	}
 	return sendContainer{
 		requestHandlers: requestHandlers,
-		pipelines:       options.PipelineBehaviors,
+		pipelines:       pipelines,
 	}
 }

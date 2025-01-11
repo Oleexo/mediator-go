@@ -42,9 +42,14 @@ func TestSynchronousPublishStrategy(t *testing.T) {
 			newSynchronousHandler(nil),
 		}
 
+		notification := TestNotification{Value: "test"}
+
 		result := strategy.Execute(context.Background(),
-			handlers,
-			func(ctx context.Context, handler interface{}) error {
+			[]mediator.Notification{notification},
+			func(notification mediator.Notification) []any {
+				return handlers
+			},
+			func(ctx context.Context, notification mediator.Notification, handler interface{}) error {
 				return handler.(synchronousHandler).Execute()
 			})
 
@@ -61,10 +66,14 @@ func TestSynchronousPublishStrategy(t *testing.T) {
 			newSynchronousHandler(errors.New("an error happened")),
 			newSynchronousHandler(nil),
 		}
+		notification := TestNotification{Value: "test"}
 
 		result := strategy.Execute(context.Background(),
-			handlers,
-			func(ctx context.Context, handler interface{}) error {
+			[]mediator.Notification{notification},
+			func(notification mediator.Notification) []any {
+				return handlers
+			},
+			func(ctx context.Context, notification mediator.Notification, handler interface{}) error {
 				return handler.(synchronousHandler).Execute()
 			})
 

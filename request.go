@@ -2,6 +2,8 @@ package mediator
 
 import "context"
 
+// BaseRequest represents a base interface for requests that can be processed within a pipeline or handler system.
+// It includes a String method for a textual representation of the request.
 type BaseRequest interface {
 	String() string
 }

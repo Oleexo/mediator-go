@@ -4,27 +4,37 @@ Inspired by [MediatR](https://github.com/jbogard/MediatR)
 
 Simple mediator implementation for Go with no dependencies.
 
-## 📜 Table of Contents
+**Why ?**
 
-1. [✨ Summary](#-table-of-contents)
-2. [🚀 Installation](#-installation)
-3. [📖 Usage](#-usage)
-    - [📦 Requests](#-requests)
-        - [Step 1: Define a request and its response](#step-1-define-a-request-and-its-response)
-        - [Step 2: Define a request handler](#step-2-define-a-request-handler)
-        - [⚙️ Using `mediator.Send[]()`](#️-using-mediatorsend)
-        - [⚡ Using `sender.Send()`](#-using-sendersend)
-    - [🔗 Pipeline Behavior](#-pipeline-behavior)
-    - [📢 Notifications](#-notifications)
-        - [Using `mediator.Publish[]()`](#using-mediatorpublish)
-        - [Using `publisher.Publish()`](#using-publisherpublish)
-        - [Publish Strategy](#publish-strategy)
-4. [📚 Modules](#-modules)
-5. [💡 Contributing](#-contributing)
+> *I mostly write web applications and strive to keep my code clean and simple.
+By using CQRS through a mediator, I can effectively decouple the HTTP layer from the core application logic.*
+
+# Table of Contents
+
+- [Mediator for Go ✨](#mediator-for-go-)
+- [Table of Contents](#table-of-contents)
+- [Installation](#installation)
+- [Usage](#usage)
+	- [Send](#send)
+		- [Define a request](#define-a-request)
+		- [Define a handler](#define-a-handler)
+		- [Send container](#send-container)
+		- [Send a request](#send-a-request)
+			- [Using request pipeline behavior](#using-request-pipeline-behavior)
+	- [Publish](#publish)
+		- [Define a notification](#define-a-notification)
+		- [Define a handler](#define-a-handler-1)
+		- [Publish container](#publish-container)
+		- [Publish a notification](#publish-a-notification)
+			- [Using a notification pipeline behavior](#using-a-notification-pipeline-behavior)
+		- [Publish strategy](#publish-strategy)
+			- [Using a strategy pipeline behavior](#using-a-strategy-pipeline-behavior)
+- [📚 Modules](#-modules)
+- [💡 Contributing](#-contributing)
 
 ---
 
-## 🚀 Installation
+# Installation
 
 Use Go modules to install mediator-go in your application:
 
@@ -34,21 +44,19 @@ go get github.com/Oleexo/mediator-go
 
 ---
 
-## 📖 Usage
+# Usage
 
-There are two main concepts in mediator-go: **request** and **notification**.
+## Send
 
-- **Request**: A message processed by one handler, returning a response.
-- **Notification**: A message processed by multiple handlers, returning nothing.
+Send is the mechanism to process a Request using a designated Handler,
+which executes the action and returns a Response.
+The Request represents the action to be performed,
+while the Handler contains the logic to perform that action.
 
-### 📦 Requests
+### Define a request
 
-All requests should implement the `mediator.Request` interface, and all request handlers should implement the
-`mediator.RequestHandler` interface. Requests can pass through `PipelineBehavior` if some are registered.
-
-✅ **Best practice:** Always ensure your request-response types are clearly documented and tested for edge cases.
-
-#### Step 1: Define a request and its response
+A request must implement the `mediator.Request` interface.
+The request should include a `String() string` method to allow rapid serialization for logging purposes.
 
 ```go
 package mypackage
@@ -67,14 +75,22 @@ type MyRequest struct {
 func (r MyRequest) String() string {
 	return fmt.Sprintf("MyRequest{Name=%s}", r.Name)
 }
-
-// MyResponse is an example of a response.
-type MyResponse struct {
-	Result string
-}
 ```
 
-#### Step 2: Define a request handler
+✅ **Best practice:** Always ensure your request-response types are clearly documented and tested for edge cases.
+
+### Define a handler
+
+A request handler processes a previously defined request.
+It should implement the `mediator.RequestHandler` interface
+with the method `Handle(ctx context.Context, request TRequest) (TResponse, error)`
+where `TRequest` is the type of the request and `TResponse` is the type of the response.
+A request without a proper response type can use `mediator.Unit` to return "nothing".
+*`Handle(ctx context.Context, request TRequest) (mediator.Unit, error)`*
+
+The `Handle` method is invoked when `mediator.Send()` is called with the corresponding request type.
+Ensure that the method implementation is thread-safe and efficiently handles the incoming request to produce the
+expected response.
 
 ```go
 package mypackage
@@ -83,12 +99,17 @@ import (
 	"context"
 )
 
+// MyResponse is an example of a response.
+type MyResponse struct {
+	Result string
+}
+
 // MyRequestHandler is an example of a request handler.
 // All request handlers should implement mediator.RequestHandler interface.
 type MyRequestHandler struct {
 }
 
-// Constructor function for MyRequestHandler
+// NewMyRequestHandler is a constructor function for MyRequestHandler
 func NewMyRequestHandler() *MyRequestHandler {
 	return &MyRequestHandler{}
 }
@@ -103,14 +124,10 @@ func (h MyRequestHandler) Handle(_ context.Context, cmd MyRequest) (MyResponse, 
 }
 ```
 
----
+### Send container
 
-Now it's time to call your request through the mediator!
-
-### ⚙️ Using `mediator.Send[]()`
-
-This method uses minimal reflection to send the request to the handler. Use this method for performance-critical
-scenarios.
+The send container is a struct that maintains the mapping between each `Request` type and its corresponding
+`RequestHandler`. This is essential for routing the correct handler to process a given request.
 
 ```go
 package main
@@ -120,7 +137,7 @@ import (
 )
 
 func main() {
-	// 🌟 Create the request handler
+	// Create the request handler
 	requestHandler := NewMyRequestHandler()
 
 	// Associate the handler with the request and response
@@ -128,14 +145,20 @@ func main() {
 		mediator.NewRequestHandlerDefinition[MyRequest, MyResponse](requestHandler),
 	}
 
-	// 🚀 Create the send container with all handler definitions
+	// Create the send container with all handler definitions
 	sendContainer := mediator.NewSendContainer(
 		mediator.WithRequestDefinitionHandlers(requestDefinitions...),
 	)
 }
 ```
 
-The second step is to send the request to the handler.
+### Send a request
+
+Now it's time to send your request through the mediator!
+
+There are currently two ways to send a request through the send container.
+
+Using `mediator.Send()`:
 
 ```go
 package main
@@ -143,61 +166,31 @@ package main
 import (
 	"context"
 	"fmt"
-
 	"github.com/Oleexo/mediator-go"
 )
 
 func main() {
-	// 🧠 Register the send container
-	sendContainer := mediator.NewSendContainer(...)
+	// Send container creation ...
+	var sendContainer mediator.SendContainer
+
 	ctx := context.Background()
+	request := MyRequest{
+		Name: "Mediator !",
+	}
 
-	request := MyRequest{Name: "John"}
-
-	// ✨ Send and process the request
 	response, err := mediator.Send[MyRequest, MyResponse](ctx, sendContainer, request)
 	if err != nil {
-		// ❌ Handle errors properly
-		panic(err)
-	}
-
-	fmt.Printf("🎉 Response: %s", response.Result)
+		fmt.Printf("The handler return an error: %s\n", err)
+	} else {
+		fmt.Printf("Response: %s", response)
+    }
 }
 ```
 
----
+*This method also exists without context: `mediator.SendWithoutContext()`.
+In this case `context.Background()` will be used*
 
-### ⚡ Using `sender.Send()`
-
-This method uses reflection to send the request to the handler. It is more flexible and easier to inject.
-
-```go
-package main
-
-import (
-	"github.com/Oleexo/mediator-go"
-)
-
-func main() {
-	// 🌟 Create the request handler
-	requestHandler := NewMyRequestHandler()
-
-	// Associate the handler with the request and response
-	requestDefinitions := []mediator.RequestHandlerDefinition{
-		mediator.NewRequestHandlerDefinition[MyRequest, MyResponse](requestHandler),
-	}
-
-	// 🚀 Create the send container
-	sendContainer := mediator.NewSendContainer(
-		mediator.WithRequestDefinitionHandlers(requestDefinitions...),
-	)
-
-	// 🌟 Create the sender
-	sender := mediator.NewSender(sendContainer)
-}
-```
-
-The second step is sending the request through the sender:
+Using `Sender`:
 
 ```go
 package main
@@ -205,36 +198,41 @@ package main
 import (
 	"context"
 	"fmt"
-
 	"github.com/Oleexo/mediator-go"
 )
 
 func main() {
-	// 🧠 Register the sender
+	// Send container creation ...
+	var sendContainer mediator.SendContainer
+	
 	sender := mediator.NewSender(sendContainer)
+
 	ctx := context.Background()
-
-	request := MyRequest{Name: "Jane"}
-
-	// ✨ Send and process the request
-	r, err := sender.Send(ctx, request)
-	if err != nil {
-		// ❌ Handle errors properly
-		panic(err)
+	request := MyRequest{
+		Name: "Mediator !",
 	}
 
-	response := r.(MyResponse)
-
-	fmt.Printf("🎉 Response: %s", response.Result)
+	response, err := sender.Send(ctx, request)
+	if err != nil {
+		fmt.Printf("The handler return an error: %s\n", err)
+	} else {
+		fmt.Printf("Response: %s", response)
+    }
 }
 ```
 
----
+The `Sender` is more suitable for use in a testable context with mocking,
+as it encapsulates the `SendContainer` logic, providing a cleaner and more
+isolated interface for testing purposes. However, due to the lack of generics
+in its method signature, the response is typed as `interface{}`, requiring
+type assertions to handle specific response types.
 
-### 🔗 Pipeline behavior
+#### Using request pipeline behavior
 
-You can add pipeline behaviors to the request to introduce cross-cutting concerns such as **validation**, **logging**,
-and **performance monitoring**.
+You can add pipeline behaviors to the request to introduce cross-cutting concerns such as **validation**,
+**logging**, and **performance monitoring**.
+
+Here an example with `mediator.LogRequestPipelineBehavior` to log information or error to each call.
 
 ```go
 package main
@@ -243,116 +241,110 @@ import (
 	"fmt"
 
 	"github.com/Oleexo/mediator-go"
-	"github.com/Oleexo/mediator-go/pipelines"
 )
 
 func main() {
-	// 🚀 Register with pipeline behaviors
-	container := mediator.NewSendContainer(
-	    ..., // Registering request handler
-	    pipelines.WithStructValidation(), // Example: Validation pipeline
+    // Register with pipeline behaviors
+    container := mediator.NewSendContainer(
+        ..., // Registering request handler
+		mediator.WithRequestPipelineBehavior(mediator.NewSlogRequestPipelineBehavior()), // Registering the logging behavior with slog
     )
-
-	response, err := mediator.SendWithoutContext[MyRequest, MyResponse](container, request)
-	if err != nil {
-		// ❌ Handle errors properly
-		panic(err)
-	}
-
-	fmt.Printf("🎉 Response: %s", response.Result)
+    
+    response, err := mediator.SendWithoutContext[MyRequest, MyResponse](container, request)
+    if err != nil {
+        // ❌ Handle errors properly
+        panic(err)
+    }
+    
+    fmt.Printf("🎉 Response: %s", response.Result)
 }
 ```
 
 ---
 
-### 📢 Notifications
+## Publish
 
-Notifications work differently—they are processed by multiple handlers and do not return results. Use notifications for
-**event-driven systems** or **pub-sub designs**.
+Publish is a mechanism for processing a Notification using multiple Handlers.
+Each Handler executes specific actions in response to the Notification and does not return any value.
+The Notification represents an event to be processed, while each Handler contains the logic to react to that event.
 
-✅ **Best practice**: Keep handler logic short and idempotent for notifications.
+### Define a notification
 
-A notification have no base interface to implement.
-The notification will not be pass through the `PipelineBehavior`.
-
-The first step is to define a notification.
+A notification don't have a required implementation and can be anything.
 
 ```go
 package mypackage
 
-// MyNotification is an example of notification.
 type MyNotification struct {
-	Name string
+	Name string // A value
 }
 ```
 
-The second step is to define all handlers for this notification.
+### Define a handler
+
+A notification handler processes a specific notification type.
+It should implement `mediator.NotificationHandler` interface
+with the method `Handle(ctx context.Context, notification TNotification) error`
+
+The `Handle` method is invoked when `mediator.Publish`  is called with the corresponding notification type.
+Ensure that the method implementation is thread-safe and efficiently handles the incoming notification.
 
 ```go
 package mypackage
 
 import (
-    "context"
-    "fmt"
+	"context"
+	"fmt"
 )
 
-type MyNotificationHandler1 struct {
+type MyNotificationHandler struct {
 }
 
-func (*MyNotificationHandler1) Handle(ctx context.Context, request MyNotification) error {
+func NewMyNotificationHandler() MyNotificationHandler {
+	return MyNotificationHandler{}
+}
+func (MyNotificationHandler) Handle(ctx context.Context, request MyNotification) error {
 	fmt.Printf("Handler 1\n")
 	return nil
 }
-
-type MyNotificationHandler2 struct {
-}
-
-func (*MyNotificationHandler2) Handle(ctx context.Context, request MyNotification) error {
-	fmt.Printf("Handler 2\n")
-	return nil
-}
 ```
 
-Like the request, there are two methods to publish the notification to handlers.
+### Publish container
 
-- `mediator.Publish[]()` is the generic method to send the notification to handlers with the minimum of reflection.
-- `publisher.Publish()` is the method to send the notification to handlers with the reflection.
-
-#### Using `mediator.Publish[]()`
-
-This method use the minimum of reflection to send the notification to the handlers.
-
-The first step is to create the `PublishContainer` with the notification handler definition.
+Like the `SendContainer`, there is also a `PublishContainer`.
+This struct maintans the mapping between each `Notification` type and its corresponding `RequestHandler`.
+This is essential for routing the correct notification to handlers.
 
 ```go
 package main
 
 import (
-	"context"
-
 	"github.com/Oleexo/mediator-go"
 )
 
 func main() {
-	externalContext := context.Background()
-	handler1 := NewMyNotificationHandler1()
-	handler2 := NewMyNotificationHandler2()
-	def1 := mediator.NewNotificationHandlerDefinition[MyNotification](handler1)
-	def2 := mediator.NewNotificationHandlerDefinition[MyNotification](handler2)
+	// Create the notification handler
+	handler := NewMyNotificationHandler()
 
-	notificationDefinitions := []mediator.NotificationHandlerDefinition{
-		def1,
-		def2,
+	// Associate the handler with the notification
+	requestDefinitions := []mediator.NotificationHandlerDefinition{
+		mediator.NewNotificationHandlerDefinition[MyNotification](handler),
 	}
 
-	// Create a new container with the notification definitions
-	publishContainer := mediator.NewPublishContainer(
-		mediator.WithNotificationDefinitionHandlers(definitions...),
+	// Create the publish container with all handler definitions
+	publisherContainer := mediator.NewPublishContainer(
+		mediator.WithRequestDefinitionHandlers(requestDefinitions...),
 	)
 }
 ```
 
-The second step is to publish the notification with the `publishContainer`.
+### Publish a notification
+
+Now it's time to **publish** your request through the mediator!
+
+There are currently two ways to send a request through the send container.
+
+Using `mediator.Publish()`:
 
 ```go
 package main
@@ -375,44 +367,7 @@ func main() {
 }
 ```
 
-#### Using `publisher.Publish()`
-
-This method use the reflection to send the notification to the handlers.
-
-This first step is to create the `Publisher` with the notification handler definition.
-
-```go
-package main
-
-import (
-	"context"
-
-	"github.com/Oleexo/mediator-go"
-)
-
-func main() {
-	externalContext := context.Background()
-	handler1 := NewMyNotificationHandler1()
-	handler2 := NewMyNotificationHandler2()
-	def1 := mediator.NewNotificationHandlerDefinition[MyNotification](handler1)
-	def2 := mediator.NewNotificationHandlerDefinition[MyNotification](handler2)
-
-	notificationDefinitions := []mediator.NotificationHandlerDefinition{
-		def1,
-		def2,
-	}
-
-  // Create a new container with the notification definitions
-  publishContainer := mediator.NewPublishContainer(
-    mediator.WithNotificationDefinitionHandlers(definitions...),
-  )
-
-  // Create a new container with the notification definitions
-	publisher := mediator.NewPublisher(publishContainer)
-}
-```
-
-The second step is to publish the notification with the `publisher`.
+Using `Publisher`:
 
 ```go
 package main
@@ -423,7 +378,8 @@ import (
 
 func main() {
 	// Create a new container with the notification definitions
-	publisher := mediator.NewPublisher()...)
+	publishContainer := mediator.NewPublishContainer(...)
+	publisher := mediator.NewPublisher(publishContainer)
 
 	notification := MyNotification{}
 
@@ -435,8 +391,40 @@ func main() {
 }
 ```
 
+The `Publisher` is more suitable for use in a testable context with mocking,
+as it encapsulates the `PublisherContainer` logic, providing a cleaner and more
+isolated interface for testing purposes.
 
-#### Publish strategy
+#### Using a notification pipeline behavior
+
+Like request, you can add a pipeline behavior to notification.
+A notification behavior is executed for each handler.
+
+Here an example with `mediator.LogNotificationPipelineBehavior` to log information or error to each call.
+
+```go
+package main
+
+import (
+	"github.com/Oleexo/mediator-go"
+)
+
+func main() {
+    // Register with pipeline behaviors
+    container := mediator.NewPublishContainer
+        ..., // Registering notification handler
+		mediator.WithNotificationPipelineBehavior(mediator.NewSlogNotificationPipelineBehavior()), // Registering the logging behavior with slog
+    )
+    
+    err := mediator.PublishWithoutContext(container, notification)
+    if err != nil {
+        // ❌ Handle errors properly
+        panic(err)
+    }
+}
+```
+
+### Publish strategy
 
 Publish strategies are the way to handle notification through the handlers.
 There are two strategies available:
@@ -456,21 +444,52 @@ func main() {
     // Create a new container with the notification definitions
     publishContainer := mediator.NewPublishContainer(
         mediator.WithNotificationDefinitionHandlers(definitions...),
-        mediator.WithPublishStrategy(mediator.Parallel),
+        mediator.WithParallelPublishStrategy(),
     )
+}
+```
+
+#### Using a strategy pipeline behavior
+
+Like the request or the notification, you can add a pipeline behavior to strategy.
+The strategy pipeline behavior is executed before the strategy and the handlers.
+
+Here an example with `mediator.LogStrategyPipelineBehavior`to log information or error before strategy.
+
+```go
+package main
+
+import (
+	"github.com/Oleexo/mediator-go"
+)
+
+func main() {
+    // Register with pipeline behaviors
+    container := mediator.NewPublishContainer
+        ..., // Registering notification handler
+		mediator.WithStrategyPipelineBehavior(mediator.NewSlogNotificationPipelineBehavior()), // Registering the logging behavior with slog
+    )
+    
+    err := mediator.PublishWithoutContext(container, notification)
+    if err != nil {
+        // ❌ Handle errors properly
+        panic(err)
+    }
 }
 ```
 
 ---
 
-### 📚 Modules
+# 📚 Modules
 
 - [🔗 Fx integration](https://github.com/Oleexo/mediator-go-fx): Easily integrate mediator-go
   with [Fx](https://uber-go.github.io/fx/index.html) for dependency injection.
 - [✅ Validation pipeline](https://github.com/Oleexo/mediator-go-valid): Add robust validation to your requests
   using [validator](https://github.com/go-playground/validator).
 
-## 💡 Contributing
+---
+
+# 💡 Contributing
 
 🤝 Pull requests are welcome! For significant changes, please create an issue first to discuss your proposal.
 
